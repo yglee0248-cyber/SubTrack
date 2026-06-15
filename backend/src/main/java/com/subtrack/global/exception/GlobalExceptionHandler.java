@@ -2,6 +2,10 @@ package com.subtrack.global.exception;
 
 import com.subtrack.global.response.ErrorResponse;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.ibatis.exceptions.PersistenceException;
+import org.mybatis.spring.MyBatisSystemException;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -11,6 +15,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -44,7 +49,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(
             DataIntegrityViolationException exception
     ) {
+        log.error("데이터 무결성 예외가 발생했습니다.", exception);
+
         ErrorCode errorCode = ErrorCode.DUPLICATE_RESOURCE;
+        return ResponseEntity
+                .status(errorCode.getStatus())
+                .body(ErrorResponse.of(errorCode));
+    }
+
+    @ExceptionHandler({MyBatisSystemException.class, PersistenceException.class, DataAccessException.class})
+    public ResponseEntity<ErrorResponse> handleDatabaseException(Exception exception) {
+        log.error("데이터베이스 처리 중 예외가 발생했습니다.", exception);
+
+        ErrorCode errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
         return ResponseEntity
                 .status(errorCode.getStatus())
                 .body(ErrorResponse.of(errorCode));
@@ -68,6 +85,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception exception) {
+        log.error("예상하지 못한 예외가 발생했습니다.", exception);
+
         ErrorCode errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
         return ResponseEntity
                 .status(errorCode.getStatus())

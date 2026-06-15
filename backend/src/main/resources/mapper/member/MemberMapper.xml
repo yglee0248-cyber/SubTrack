@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.subtrack.domain.member.dao.MemberDao">
+
+    <resultMap id="MemberResultMap" type="com.subtrack.domain.member.vo.Member">
+        <id property="memberId" column="member_id"/>
+        <result property="email" column="email"/>
+        <result property="passwordHash" column="password_hash"/>
+        <result property="nickname" column="nickname"/>
+        <result property="role" column="role"/>
+        <result property="status" column="status"/>
+        <result property="pushEnabled" column="push_enabled"/>
+        <result property="onesignalPlayerId" column="onesignal_player_id"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="deletedAt" column="deleted_at"/>
+    </resultMap>
+
+    <sql id="MemberColumns">
+        member_id,
+        email,
+        password_hash,
+        nickname,
+        role,
+        status,
+        push_enabled,
+        onesignal_player_id,
+        created_at,
+        updated_at,
+        deleted_at
+    </sql>
+
+    <select id="countByEmail" resultType="int">
+        SELECT COUNT(*)
+        FROM `member`
+        WHERE email = #{email}
+    </select>
+
+    <select id="findByEmail" resultMap="MemberResultMap">
+        SELECT
+        <include refid="MemberColumns"/>
+        FROM `member`
+        WHERE email = #{email}
+        LIMIT 1
+    </select>
+
+    <select id="findById" resultMap="MemberResultMap">
+        SELECT
+        <include refid="MemberColumns"/>
+        FROM `member`
+        WHERE member_id = #{memberId}
+        LIMIT 1
+    </select>
+
+    <insert id="insertMember"
+            parameterType="com.subtrack.domain.member.vo.Member"
+            useGeneratedKeys="true"
+            keyProperty="memberId"
+            keyColumn="member_id">
+        INSERT INTO `member` (
+            email,
+            password_hash,
+            nickname,
+            role,
+            status
+        )
+        VALUES (
+            #{email},
+            #{passwordHash},
+            #{nickname},
+            #{role},
+            #{status}
+        )
+    </insert>
+
+    <update id="updateNickname">
+        UPDATE `member`
+        SET nickname = #{nickname}
+        WHERE member_id = #{memberId}
+          AND status = 'ACTIVE'
+          AND deleted_at IS NULL
+    </update>
+
+</mapper>

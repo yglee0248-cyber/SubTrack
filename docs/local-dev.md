@@ -7,7 +7,7 @@
 루트의 `.env.example`을 참고해서 `.env` 파일을 만듭니다.
 
 ```bash
-DB_URL=jdbc:mysql://localhost:3306/subtrack?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+DB_URL=jdbc:mysql://localhost:3307/subtrack?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
 DB_USERNAME=root
 DB_PASSWORD=password
 JWT_SECRET=change-this-secret-key
