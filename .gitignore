@@ -3,6 +3,8 @@
 
 backend/build/
 backend/target/
+backend/.mvn/wrapper/apache-maven-*/
+backend/.mvn/wrapper/apache-maven-*-bin.zip
 
 frontend/node_modules/
 frontend/dist/

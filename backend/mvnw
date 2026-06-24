@@ -1,0 +1,37 @@
+#!/bin/sh
+
+BASE_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
+WRAPPER_DIR="$BASE_DIR/.mvn/wrapper"
+WRAPPER_PROPERTIES="$WRAPPER_DIR/maven-wrapper.properties"
+MAVEN_VERSION="3.9.9"
+MAVEN_HOME="$WRAPPER_DIR/apache-maven-$MAVEN_VERSION"
+MAVEN_ZIP="$WRAPPER_DIR/apache-maven-$MAVEN_VERSION-bin.zip"
+DISTRIBUTION_URL="https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/$MAVEN_VERSION/apache-maven-$MAVEN_VERSION-bin.zip"
+
+if [ -f "$WRAPPER_PROPERTIES" ]; then
+  PROPERTY_URL="$(grep '^distributionUrl=' "$WRAPPER_PROPERTIES" | cut -d'=' -f2-)"
+  if [ -n "$PROPERTY_URL" ]; then
+    DISTRIBUTION_URL="$PROPERTY_URL"
+  fi
+fi
+
+if [ ! -x "$MAVEN_HOME/bin/mvn" ]; then
+  mkdir -p "$WRAPPER_DIR"
+
+  if [ ! -f "$MAVEN_ZIP" ]; then
+    echo "Downloading Apache Maven $MAVEN_VERSION..."
+    if command -v curl >/dev/null 2>&1; then
+      curl -fsSL "$DISTRIBUTION_URL" -o "$MAVEN_ZIP"
+    elif command -v wget >/dev/null 2>&1; then
+      wget -q "$DISTRIBUTION_URL" -O "$MAVEN_ZIP"
+    else
+      echo "curl or wget is required to download Apache Maven." >&2
+      exit 1
+    fi
+  fi
+
+  echo "Extracting Apache Maven $MAVEN_VERSION..."
+  unzip -q "$MAVEN_ZIP" -d "$WRAPPER_DIR"
+fi
+
+exec "$MAVEN_HOME/bin/mvn" "$@"
