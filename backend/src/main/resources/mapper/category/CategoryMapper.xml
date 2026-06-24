@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.subtrack.domain.category.dao.CategoryDao">
+
+    <resultMap id="CategoryResultMap" type="com.subtrack.domain.category.vo.Category">
+        <id property="categoryId" column="category_id" />
+        <result property="name" column="name" />
+        <result property="colorCode" column="color_code" />
+        <result property="icon" column="icon" />
+        <result property="sortOrder" column="sort_order" />
+        <result property="defaultCategory" column="is_default" />
+        <result property="createdAt" column="created_at" />
+        <result property="updatedAt" column="updated_at" />
+    </resultMap>
+
+    <sql id="CategoryColumns">
+        category_id,
+        name,
+        color_code,
+        icon,
+        sort_order,
+        is_default,
+        created_at,
+        updated_at
+    </sql>
+
+    <select id="findDefaultCategories" resultMap="CategoryResultMap">
+        SELECT
+            <include refid="CategoryColumns" />
+        FROM subscription_category
+        WHERE is_default = 1
+        ORDER BY sort_order ASC, category_id ASC
+    </select>
+
+</mapper>
