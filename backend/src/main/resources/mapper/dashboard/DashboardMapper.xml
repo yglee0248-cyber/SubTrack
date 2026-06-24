@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.subtrack.domain.dashboard.dao.DashboardDao">
+
+    <resultMap id="DashboardSummaryResultMap" type="com.subtrack.domain.dashboard.vo.DashboardSummary">
+        <result property="activeSubscriptionCount" column="active_subscription_count" />
+        <result property="monthlyExpectedAmount" column="monthly_expected_amount" />
+        <result property="upcomingCount" column="upcoming_count" />
+        <result property="overdueCount" column="overdue_count" />
+    </resultMap>
+
+    <resultMap id="UpcomingSubscriptionResultMap" type="com.subtrack.domain.dashboard.vo.UpcomingSubscription">
+        <id property="subscriptionId" column="subscription_id" />
+        <result property="name" column="name" />
+        <result property="categoryId" column="category_id" />
+        <result property="categoryName" column="category_name" />
+        <result property="price" column="price" />
+        <result property="currency" column="currency" />
+        <result property="nextPaymentDate" column="next_payment_date" />
+    </resultMap>
+
+    <resultMap id="CategoryExpenseResultMap" type="com.subtrack.domain.dashboard.vo.CategoryExpense">
+        <id property="categoryId" column="category_id" />
+        <result property="categoryName" column="category_name" />
+        <result property="colorCode" column="color_code" />
+        <result property="icon" column="icon" />
+        <result property="totalAmount" column="total_amount" />
+        <result property="subscriptionCount" column="subscription_count" />
+    </resultMap>
+
+    <sql id="ActiveSubscriptionCondition">
+        s.member_id = #{memberId}
+        AND s.status = 'ACTIVE'
+        AND s.deleted_at IS NULL
+    </sql>
+
+    <select id="findSummary" resultMap="DashboardSummaryResultMap">
+        SELECT
+            (
+                SELECT COUNT(*)
+                FROM subscription s
+                WHERE <include refid="ActiveSubscriptionCondition" />
+            ) AS active_subscription_count,
+            COALESCE((
+                SELECT SUM(s.price)
+                FROM subscription s
+                WHERE <include refid="ActiveSubscriptionCondition" />
+                  AND s.next_payment_date BETWEEN #{startDate} AND #{endDate}
+            ), 0.00) AS monthly_expected_amount,
+            (
+                SELECT COUNT(*)
+                FROM subscription s
+                WHERE <include refid="ActiveSubscriptionCondition" />
+                  AND s.next_payment_date BETWEEN #{today} AND #{upcomingEndDate}
+            ) AS upcoming_count,
+            (
+                SELECT COUNT(*)
+                FROM subscription s
+                WHERE <include refid="ActiveSubscriptionCondition" />
+                  AND s.next_payment_date &lt; #{today}
+            ) AS overdue_count
+    </select>
+
+    <select id="findUpcomingSubscriptions" resultMap="UpcomingSubscriptionResultMap">
+        SELECT
+            s.subscription_id,
+            s.name,
+            s.category_id,
+            c.name AS category_name,
+            s.price,
+            s.currency,
+            s.next_payment_date
+        FROM subscription s
+        INNER JOIN subscription_category c ON s.category_id = c.category_id
+        WHERE <include refid="ActiveSubscriptionCondition" />
+          AND s.next_payment_date BETWEEN #{today} AND #{endDate}
+        ORDER BY s.next_payment_date ASC, s.subscription_id DESC
+    </select>
+
+    <select id="findCategoryExpenses" resultMap="CategoryExpenseResultMap">
+        SELECT
+            c.category_id,
+            c.name AS category_name,
+            c.color_code,
+            c.icon,
+            COALESCE(SUM(s.price), 0.00) AS total_amount,
+            COUNT(*) AS subscription_count
+        FROM subscription s
+        INNER JOIN subscription_category c ON s.category_id = c.category_id
+        WHERE <include refid="ActiveSubscriptionCondition" />
+          AND s.next_payment_date BETWEEN #{startDate} AND #{endDate}
+        GROUP BY c.category_id, c.name, c.color_code, c.icon
+        ORDER BY total_amount DESC, c.category_id ASC
+    </select>
+
+</mapper>
