@@ -35,4 +35,11 @@
         ORDER BY sort_order ASC, category_id ASC
     </select>
 
+    <select id="existsDefaultCategoryById" resultType="int">
+        SELECT COUNT(*)
+        FROM subscription_category
+        WHERE category_id = #{categoryId}
+          AND is_default = 1
+    </select>
+
 </mapper>

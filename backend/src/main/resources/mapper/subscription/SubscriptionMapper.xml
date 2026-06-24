@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.subtrack.domain.subscription.dao.SubscriptionDao">
+
+    <resultMap id="SubscriptionResultMap" type="com.subtrack.domain.subscription.vo.Subscription">
+        <id property="subscriptionId" column="subscription_id" />
+        <result property="memberId" column="member_id" />
+        <result property="categoryId" column="category_id" />
+        <result property="categoryName" column="category_name" />
+        <result property="name" column="name" />
+        <result property="price" column="price" />
+        <result property="currency" column="currency" />
+        <result property="billingCycle" column="billing_cycle" />
+        <result property="billingAnchorDay" column="billing_anchor_day" />
+        <result property="nextPaymentDate" column="next_payment_date" />
+        <result property="paymentMethod" column="payment_method" />
+        <result property="status" column="status" />
+        <result property="memo" column="memo" />
+        <result property="createdAt" column="created_at" />
+        <result property="updatedAt" column="updated_at" />
+        <result property="deletedAt" column="deleted_at" />
+    </resultMap>
+
+    <sql id="SubscriptionColumns">
+        s.subscription_id,
+        s.member_id,
+        s.category_id,
+        c.name AS category_name,
+        s.name,
+        s.price,
+        s.currency,
+        s.billing_cycle,
+        s.billing_anchor_day,
+        s.next_payment_date,
+        s.payment_method,
+        s.status,
+        s.memo,
+        s.created_at,
+        s.updated_at,
+        s.deleted_at
+    </sql>
+
+    <sql id="SubscriptionSearchWhere">
+        WHERE s.member_id = #{memberId}
+          AND s.deleted_at IS NULL
+        <if test="keyword != null and keyword != ''">
+          AND s.name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        <if test="categoryId != null">
+          AND s.category_id = #{categoryId}
+        </if>
+        <if test="status != null and status != ''">
+          AND s.status = #{status}
+        </if>
+        <choose>
+            <when test="paymentStatus == 'UPCOMING'">
+          AND DATEDIFF(s.next_payment_date, CURDATE()) &gt;= 8
+            </when>
+            <when test="paymentStatus == 'DUE_SOON'">
+          AND DATEDIFF(s.next_payment_date, CURDATE()) BETWEEN 1 AND 7
+            </when>
+            <when test="paymentStatus == 'DUE_TODAY'">
+          AND DATEDIFF(s.next_payment_date, CURDATE()) = 0
+            </when>
+            <when test="paymentStatus == 'OVERDUE'">
+          AND DATEDIFF(s.next_payment_date, CURDATE()) &lt; 0
+            </when>
+        </choose>
+    </sql>
+
+    <select id="findSubscriptions"
+            parameterType="com.subtrack.domain.subscription.dto.SubscriptionSearchCondition"
+            resultMap="SubscriptionResultMap">
+        SELECT
+            <include refid="SubscriptionColumns" />
+        FROM subscription s
+        INNER JOIN subscription_category c ON s.category_id = c.category_id
+        <include refid="SubscriptionSearchWhere" />
+        ORDER BY s.next_payment_date ASC, s.subscription_id DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countSubscriptions"
+            parameterType="com.subtrack.domain.subscription.dto.SubscriptionSearchCondition"
+            resultType="int">
+        SELECT COUNT(*)
+        FROM subscription s
+        INNER JOIN subscription_category c ON s.category_id = c.category_id
+        <include refid="SubscriptionSearchWhere" />
+    </select>
+
+    <select id="findByIdAndMemberId" resultMap="SubscriptionResultMap">
+        SELECT
+            <include refid="SubscriptionColumns" />
+        FROM subscription s
+        INNER JOIN subscription_category c ON s.category_id = c.category_id
+        WHERE s.subscription_id = #{subscriptionId}
+          AND s.member_id = #{memberId}
+          AND s.deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+    <insert id="insertSubscription"
+            parameterType="com.subtrack.domain.subscription.vo.Subscription"
+            useGeneratedKeys="true"
+            keyProperty="subscriptionId"
+            keyColumn="subscription_id">
+        INSERT INTO subscription (
+            member_id,
+            category_id,
+            name,
+            price,
+            currency,
+            billing_cycle,
+            billing_anchor_day,
+            next_payment_date,
+            payment_method,
+            status,
+            memo
+        ) VALUES (
+            #{memberId},
+            #{categoryId},
+            #{name},
+            #{price},
+            #{currency},
+            #{billingCycle},
+            #{billingAnchorDay},
+            #{nextPaymentDate},
+            #{paymentMethod},
+            #{status},
+            #{memo}
+        )
+    </insert>
+
+    <update id="updateSubscription" parameterType="com.subtrack.domain.subscription.vo.Subscription">
+        UPDATE subscription
+        SET category_id = #{categoryId},
+            name = #{name},
+            price = #{price},
+            currency = #{currency},
+            billing_cycle = #{billingCycle},
+            billing_anchor_day = #{billingAnchorDay},
+            next_payment_date = #{nextPaymentDate},
+            payment_method = #{paymentMethod},
+            status = #{status},
+            memo = #{memo}
+        WHERE subscription_id = #{subscriptionId}
+          AND member_id = #{memberId}
+          AND deleted_at IS NULL
+    </update>
+
+    <update id="softDeleteSubscription">
+        UPDATE subscription
+        SET deleted_at = NOW(6)
+        WHERE subscription_id = #{subscriptionId}
+          AND member_id = #{memberId}
+          AND deleted_at IS NULL
+    </update>
+
+</mapper>
