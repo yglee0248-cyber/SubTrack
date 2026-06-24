@@ -1,0 +1,90 @@
+.appShell {
+  min-height: 100vh;
+  background: #f7f8fb;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-bottom: 1px solid #dfe3ea;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(8px);
+}
+
+.navInner {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  gap: 24px;
+}
+
+.brand {
+  color: #162033;
+  font-size: 20px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.navLinks {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.navLink {
+  color: #566176;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.navLink:hover {
+  color: #1f5eff;
+}
+
+.authArea {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.nickname {
+  max-width: 120px;
+  overflow: hidden;
+  color: #566176;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.main {
+  padding: 40px 0;
+}
+
+@media (max-width: 720px) {
+  .navInner {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+    padding-bottom: 14px;
+    padding-top: 14px;
+  }
+
+  .navLinks,
+  .authArea {
+    width: 100%;
+  }
+
+  .authArea {
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+
+  .main {
+    padding: 24px 0;
+  }
+}

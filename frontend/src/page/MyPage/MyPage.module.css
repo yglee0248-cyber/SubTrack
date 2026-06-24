@@ -1,0 +1,32 @@
+.page {
+  display: grid;
+  gap: 20px;
+  max-width: 720px;
+}
+
+.title {
+  font-weight: 800;
+}
+
+.profileList {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.profileList div {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 12px;
+  border-bottom: 1px solid #dfe3ea;
+  padding: 12px 0;
+}
+
+.profileList dt {
+  color: #667085;
+  font-weight: 700;
+}
+
+.profileList dd {
+  margin: 0;
+}
