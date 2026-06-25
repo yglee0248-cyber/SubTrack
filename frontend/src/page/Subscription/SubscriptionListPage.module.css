@@ -242,11 +242,19 @@
   padding: 4px 0 8px;
 }
 
+.dialogPaper {
+  max-height: calc(100dvh - 32px);
+}
+
 .dialogContent {
+  max-height: calc(100dvh - 160px);
+  min-height: 0;
+  overflow-y: auto;
   padding-top: 8px;
 }
 
 .dialogActions {
+  flex-shrink: 0;
   padding: 16px 24px 20px;
 }
 
@@ -299,5 +307,11 @@
 
   .cardMeta {
     grid-template-columns: 1fr;
+  }
+
+  .dialogPaper {
+    width: calc(100% - 24px);
+    max-height: calc(100dvh - 24px);
+    margin: 12px;
   }
 }

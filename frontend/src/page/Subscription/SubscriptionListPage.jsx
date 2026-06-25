@@ -22,7 +22,7 @@ const DEFAULT_FILTERS = {
   status: "",
   paymentStatus: "",
   page: 0,
-  size: 10,
+  size: 12,
 };
 
 function buildQueryParams(filters) {
@@ -30,7 +30,7 @@ function buildQueryParams(filters) {
     ...filters,
     categoryId: filters.categoryId ? Number(filters.categoryId) : "",
     page: Number(filters.page) || 0,
-    size: Number(filters.size) || 10,
+    size: Number(filters.size) || 12,
   };
 }
 

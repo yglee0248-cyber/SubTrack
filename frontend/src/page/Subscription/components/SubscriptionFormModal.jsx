@@ -94,7 +94,22 @@ export function SubscriptionFormModal({
   const disabled = isSubmitting || isInitialLoading;
 
   return (
-    <Dialog open={open} onClose={disabled ? undefined : onClose} fullWidth maxWidth="sm">
+    <Dialog
+      open={open}
+      onClose={disabled ? undefined : onClose}
+      fullWidth
+      maxWidth="sm"
+      scroll="paper"
+      PaperProps={{
+        className: styles.dialogPaper,
+        sx: {
+          maxHeight: { xs: "calc(100dvh - 24px)", sm: "calc(100dvh - 32px)" },
+          margin: { xs: "12px", sm: "32px" },
+          overflow: "hidden",
+          width: { xs: "calc(100% - 24px)", sm: "calc(100% - 64px)" },
+        },
+      }}
+    >
       <DialogTitle>{title}</DialogTitle>
       <form onSubmit={handleSubmit(submitForm)} data-testid="subscription-form">
         <DialogContent className={styles.dialogContent}>
@@ -106,6 +121,7 @@ export function SubscriptionFormModal({
               select
               label="카테고리"
               SelectProps={{ native: true }}
+              InputLabelProps={{ shrink: true }}
               inputProps={{ "data-testid": "subscription-category-select" }}
               fullWidth
               disabled={disabled}
@@ -125,6 +141,7 @@ export function SubscriptionFormModal({
               label="구독 이름"
               fullWidth
               disabled={disabled}
+              InputLabelProps={{ shrink: true }}
               inputProps={{ "data-testid": "subscription-name-input" }}
               error={Boolean(errors.name)}
               helperText={errors.name?.message}
@@ -137,6 +154,7 @@ export function SubscriptionFormModal({
                 type="number"
                 fullWidth
                 disabled={disabled}
+                InputLabelProps={{ shrink: true }}
                 inputProps={{ min: 0, step: 100, "data-testid": "subscription-price-input" }}
                 error={Boolean(errors.price)}
                 helperText={errors.price?.message}
@@ -147,6 +165,7 @@ export function SubscriptionFormModal({
                 label="통화"
                 fullWidth
                 disabled={disabled}
+                InputLabelProps={{ shrink: true }}
                 inputProps={{ maxLength: 3, "data-testid": "subscription-currency-input" }}
                 error={Boolean(errors.currency)}
                 helperText={errors.currency?.message}
@@ -159,6 +178,7 @@ export function SubscriptionFormModal({
                 select
                 label="결제 주기"
                 SelectProps={{ native: true }}
+                InputLabelProps={{ shrink: true }}
                 inputProps={{ "data-testid": "subscription-billing-cycle-select" }}
                 fullWidth
                 disabled={disabled}
@@ -191,6 +211,7 @@ export function SubscriptionFormModal({
                 label="결제 수단"
                 fullWidth
                 disabled={disabled}
+                InputLabelProps={{ shrink: true }}
                 inputProps={{ maxLength: 30, "data-testid": "subscription-payment-method-input" }}
                 error={Boolean(errors.paymentMethod)}
                 helperText={errors.paymentMethod?.message}
@@ -201,6 +222,7 @@ export function SubscriptionFormModal({
                 select
                 label="구독 상태"
                 SelectProps={{ native: true }}
+                InputLabelProps={{ shrink: true }}
                 inputProps={{ "data-testid": "subscription-status-select" }}
                 fullWidth
                 disabled={disabled}
@@ -222,6 +244,7 @@ export function SubscriptionFormModal({
               multiline
               minRows={3}
               disabled={disabled}
+              InputLabelProps={{ shrink: true }}
               inputProps={{ maxLength: 500, "data-testid": "subscription-memo-input" }}
               error={Boolean(errors.memo)}
               helperText={errors.memo?.message || "최대 500자"}

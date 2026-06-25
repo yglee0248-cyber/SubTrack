@@ -18,6 +18,7 @@ export function SubscriptionFilter({ filters, categories, onChange, onSubmit, on
         placeholder="구독 이름 검색"
         value={filters.keyword}
         onChange={(event) => onChange("keyword", event.target.value)}
+        InputLabelProps={{ shrink: true }}
         inputProps={{ "data-testid": "filter-keyword-input" }}
         size="small"
         fullWidth
@@ -28,6 +29,7 @@ export function SubscriptionFilter({ filters, categories, onChange, onSubmit, on
         label="카테고리"
         value={filters.categoryId}
         onChange={(event) => onChange("categoryId", event.target.value)}
+        InputLabelProps={{ shrink: true }}
         SelectProps={{ native: true }}
         inputProps={{ "data-testid": "filter-category-select" }}
         size="small"
@@ -46,6 +48,7 @@ export function SubscriptionFilter({ filters, categories, onChange, onSubmit, on
         label="구독 상태"
         value={filters.status}
         onChange={(event) => onChange("status", event.target.value)}
+        InputLabelProps={{ shrink: true }}
         SelectProps={{ native: true }}
         inputProps={{ "data-testid": "filter-status-select" }}
         size="small"
@@ -64,6 +67,7 @@ export function SubscriptionFilter({ filters, categories, onChange, onSubmit, on
         label="결제 상태"
         value={filters.paymentStatus}
         onChange={(event) => onChange("paymentStatus", event.target.value)}
+        InputLabelProps={{ shrink: true }}
         SelectProps={{ native: true }}
         inputProps={{ "data-testid": "filter-payment-status-select" }}
         size="small"
@@ -82,14 +86,15 @@ export function SubscriptionFilter({ filters, categories, onChange, onSubmit, on
         label="페이지 크기"
         value={filters.size}
         onChange={(event) => onChange("size", Number(event.target.value))}
+        InputLabelProps={{ shrink: true }}
         SelectProps={{ native: true }}
         inputProps={{ "data-testid": "filter-size-select" }}
         size="small"
         fullWidth
       >
-        <option value={10}>10개</option>
-        <option value={20}>20개</option>
-        <option value={50}>50개</option>
+        <option value={6}>6개</option>
+        <option value={12}>12개</option>
+        <option value={24}>24개</option>
       </TextField>
 
       <div className={styles.filterActions}>
