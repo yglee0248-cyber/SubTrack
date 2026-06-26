@@ -112,30 +112,30 @@ function DashboardPage() {
 
       <div className={styles.summaryGrid}>
         <SummaryCard
-          label="활성 구독 수"
+          label="선택 월 결제 구독 수"
           value={formatDashboardCount(summary.activeSubscriptionCount)}
-          helper="현재 결제 추적 중"
+          helper="상태 이력 기준으로 선택한 월에 실제 결제 예정인 구독 수입니다."
           tone="blue"
           loading={summaryQuery.isLoading}
         />
         <SummaryCard
           label="월간 구독료 합계"
           value={formatDashboardAmount(summary.monthlyExpectedAmount)}
-          helper={`${formatYearMonthLabel(summary.yearMonth || yearMonth)} 구독료 합계`}
+          helper={`${formatYearMonthLabel(summary.yearMonth || yearMonth)} 기준, 시작일·주기·상태 이력으로 계산합니다.`}
           tone="green"
           loading={summaryQuery.isLoading}
         />
         <SummaryCard
-          label="7일 이내 예정"
+          label="현재 기준 7일 이내 예정"
           value={formatDashboardCount(summary.upcomingCount)}
-          helper="오늘부터 7일 이내"
+          helper="오늘부터 7일 이내 결제 예정인 활성 구독입니다."
           tone="orange"
           loading={summaryQuery.isLoading}
         />
         <SummaryCard
-          label="연체 구독"
+          label="현재 기준 연체 구독"
           value={formatDashboardCount(summary.overdueCount)}
-          helper="오늘 이전 결제일"
+          helper="오늘 이전 결제일이 남아 있는 활성 구독입니다."
           tone="red"
           loading={summaryQuery.isLoading}
         />
@@ -163,10 +163,10 @@ function DashboardPage() {
           <div className={styles.sectionHeader}>
             <div>
               <Typography variant="h6" component="h2" className={styles.sectionTitle}>
-                카테고리별 예상 지출
+                카테고리별 월간 구독료
               </Typography>
               <Typography variant="body2" className={styles.sectionDescription}>
-                구독 시작일과 결제 주기를 기준으로 계산합니다.
+                구독 시작일, 결제 주기, 상태 이력을 기준으로 계산합니다.
               </Typography>
             </div>
             {categoryExpensesQuery.isFetching && !categoryExpensesQuery.isLoading && (

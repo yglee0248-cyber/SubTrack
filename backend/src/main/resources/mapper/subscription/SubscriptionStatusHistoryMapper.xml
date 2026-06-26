@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.subtrack.domain.subscription.dao.SubscriptionStatusHistoryDao">
+
+    <resultMap id="SubscriptionStatusHistoryResultMap"
+               type="com.subtrack.domain.subscription.vo.SubscriptionStatusHistory">
+        <id property="statusHistoryId" column="status_history_id" />
+        <result property="subscriptionId" column="subscription_id" />
+        <result property="status" column="status" />
+        <result property="effectiveStartDate" column="effective_start_date" />
+        <result property="effectiveEndDate" column="effective_end_date" />
+        <result property="createdAt" column="created_at" />
+    </resultMap>
+
+    <select id="findOpenHistoryBySubscriptionId" resultMap="SubscriptionStatusHistoryResultMap">
+        SELECT
+            status_history_id,
+            subscription_id,
+            status,
+            effective_start_date,
+            effective_end_date,
+            created_at
+        FROM subscription_status_history
+        WHERE subscription_id = #{subscriptionId}
+          AND effective_end_date IS NULL
+        ORDER BY effective_start_date DESC, status_history_id DESC
+        LIMIT 1
+    </select>
+
+    <select id="findHistoriesBySubscriptionId" resultMap="SubscriptionStatusHistoryResultMap">
+        SELECT
+            status_history_id,
+            subscription_id,
+            status,
+            effective_start_date,
+            effective_end_date,
+            created_at
+        FROM subscription_status_history
+        WHERE subscription_id = #{subscriptionId}
+        ORDER BY effective_start_date ASC, status_history_id ASC
+    </select>
+
+    <select id="findHistoriesForDashboard" resultMap="SubscriptionStatusHistoryResultMap">
+        SELECT
+            h.status_history_id,
+            h.subscription_id,
+            h.status,
+            h.effective_start_date,
+            h.effective_end_date,
+            h.created_at
+        FROM subscription_status_history h
+        INNER JOIN subscription s ON h.subscription_id = s.subscription_id
+        WHERE s.member_id = #{memberId}
+          AND s.deleted_at IS NULL
+          AND h.effective_start_date &lt;= #{endDate}
+          AND (h.effective_end_date IS NULL OR h.effective_end_date &gt;= #{startDate})
+        ORDER BY h.subscription_id ASC, h.effective_start_date ASC, h.status_history_id ASC
+    </select>
+
+    <insert id="insertHistory"
+            parameterType="com.subtrack.domain.subscription.vo.SubscriptionStatusHistory"
+            useGeneratedKeys="true"
+            keyProperty="statusHistoryId"
+            keyColumn="status_history_id">
+        INSERT INTO subscription_status_history (
+            subscription_id,
+            status,
+            effective_start_date,
+            effective_end_date
+        ) VALUES (
+            #{subscriptionId},
+            #{status},
+            #{effectiveStartDate},
+            #{effectiveEndDate}
+        )
+    </insert>
+
+    <update id="closeOpenHistory">
+        UPDATE subscription_status_history
+        SET effective_end_date = #{effectiveEndDate}
+        WHERE subscription_id = #{subscriptionId}
+          AND effective_end_date IS NULL
+    </update>
+
+    <update id="updateOpenHistoryStatus">
+        UPDATE subscription_status_history
+        SET status = #{status}
+        WHERE subscription_id = #{subscriptionId}
+          AND effective_end_date IS NULL
+    </update>
+
+</mapper>

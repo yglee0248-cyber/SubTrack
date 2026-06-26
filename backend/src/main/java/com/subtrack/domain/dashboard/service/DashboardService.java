@@ -7,6 +7,8 @@ import com.subtrack.domain.dashboard.dto.UpcomingSubscriptionResponse;
 import com.subtrack.domain.dashboard.vo.CategoryExpense;
 import com.subtrack.domain.dashboard.vo.DashboardSummary;
 import com.subtrack.domain.dashboard.vo.DashboardSubscription;
+import com.subtrack.domain.subscription.dao.SubscriptionStatusHistoryDao;
+import com.subtrack.domain.subscription.vo.SubscriptionStatusHistory;
 import com.subtrack.global.exception.BusinessException;
 import com.subtrack.global.exception.ErrorCode;
 import com.subtrack.global.util.BillingDateCalculator;
@@ -20,6 +22,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -31,21 +34,28 @@ public class DashboardService {
     private static final int DEFAULT_UPCOMING_DAYS = 7;
     private static final int MIN_UPCOMING_DAYS = 1;
     private static final int MAX_UPCOMING_DAYS = 31;
+    private static final String ACTIVE_STATUS = "ACTIVE";
 
     private final DashboardDao dashboardDao;
+    private final SubscriptionStatusHistoryDao statusHistoryDao;
 
-    public DashboardService(DashboardDao dashboardDao) {
+    public DashboardService(DashboardDao dashboardDao, SubscriptionStatusHistoryDao statusHistoryDao) {
         this.dashboardDao = dashboardDao;
+        this.statusHistoryDao = statusHistoryDao;
     }
 
     @Transactional(readOnly = true)
     public DashboardSummaryResponse getSummary(Long memberId, String yearMonthValue) {
         MonthRange monthRange = resolveMonthRange(yearMonthValue);
         LocalDate today = getToday();
+        List<DashboardSubscription> monthlySubscriptions = findActiveSubscriptionsOccurringInMonth(
+                memberId,
+                monthRange
+        );
 
         DashboardSummary summary = new DashboardSummary();
-        summary.setActiveSubscriptionCount(dashboardDao.countActiveSubscriptions(memberId));
-        summary.setMonthlyExpectedAmount(calculateMonthlyExpectedAmount(memberId, monthRange));
+        summary.setActiveSubscriptionCount(monthlySubscriptions.size());
+        summary.setMonthlyExpectedAmount(calculateMonthlyExpectedAmount(monthlySubscriptions));
         summary.setUpcomingCount(dashboardDao.countUpcomingSubscriptions(
                 memberId,
                 today,
@@ -77,8 +87,8 @@ public class DashboardService {
                 .toList();
     }
 
-    private BigDecimal calculateMonthlyExpectedAmount(Long memberId, MonthRange monthRange) {
-        return findSubscriptionsOccurringInMonth(memberId, monthRange)
+    private BigDecimal calculateMonthlyExpectedAmount(List<DashboardSubscription> subscriptions) {
+        return subscriptions
                 .stream()
                 .map(DashboardSubscription::getPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -87,7 +97,7 @@ public class DashboardService {
     private List<CategoryExpense> calculateCategoryExpenses(Long memberId, MonthRange monthRange) {
         Map<Long, CategoryExpense> groupedExpenses = new LinkedHashMap<>();
 
-        for (DashboardSubscription subscription : findSubscriptionsOccurringInMonth(memberId, monthRange)) {
+        for (DashboardSubscription subscription : findActiveSubscriptionsOccurringInMonth(memberId, monthRange)) {
             CategoryExpense categoryExpense = groupedExpenses.computeIfAbsent(
                     subscription.getCategoryId(),
                     categoryId -> createCategoryExpense(subscription)
@@ -116,18 +126,32 @@ public class DashboardService {
         return categoryExpense;
     }
 
-    private List<DashboardSubscription> findSubscriptionsOccurringInMonth(Long memberId, MonthRange monthRange) {
-        return dashboardDao.findRecurringDashboardSubscriptions(
-                        memberId,
-                        monthRange.getStartDate(),
-                        monthRange.getEndDate()
-                )
+    private List<DashboardSubscription> findActiveSubscriptionsOccurringInMonth(Long memberId, MonthRange monthRange) {
+        List<DashboardSubscription> candidates = dashboardDao.findRecurringDashboardSubscriptions(
+                memberId,
+                monthRange.getStartDate(),
+                monthRange.getEndDate()
+        );
+
+        Map<Long, List<SubscriptionStatusHistory>> historiesBySubscriptionId = statusHistoryDao
+                .findHistoriesForDashboard(memberId, monthRange.getStartDate(), monthRange.getEndDate())
                 .stream()
-                .filter(subscription -> occursInMonth(subscription, monthRange.getYearMonthValue()))
+                .collect(Collectors.groupingBy(SubscriptionStatusHistory::getSubscriptionId));
+
+        return candidates.stream()
+                .filter(subscription -> occursInMonthAndActiveHistory(
+                        subscription,
+                        monthRange.getYearMonthValue(),
+                        historiesBySubscriptionId.get(subscription.getSubscriptionId())
+                ))
                 .toList();
     }
 
-    private boolean occursInMonth(DashboardSubscription subscription, YearMonth yearMonth) {
+    private boolean occursInMonthAndActiveHistory(
+            DashboardSubscription subscription,
+            YearMonth yearMonth,
+            List<SubscriptionStatusHistory> histories
+    ) {
         LocalDate occurrenceDate = BillingDateCalculator.calculateOccurrenceDate(
                 subscription.getBillingStartDate(),
                 subscription.getBillingCycle(),
@@ -138,8 +162,19 @@ public class DashboardService {
             return false;
         }
 
-        return subscription.getDeletedAt() == null
-                || !occurrenceDate.isAfter(subscription.getDeletedAt().toLocalDate());
+        return isActiveOn(occurrenceDate, histories);
+    }
+
+    private boolean isActiveOn(LocalDate occurrenceDate, List<SubscriptionStatusHistory> histories) {
+        if (histories == null || histories.isEmpty()) {
+            return false;
+        }
+
+        return histories.stream()
+                .anyMatch(history -> ACTIVE_STATUS.equals(history.getStatus())
+                        && !occurrenceDate.isBefore(history.getEffectiveStartDate())
+                        && (history.getEffectiveEndDate() == null
+                        || !occurrenceDate.isAfter(history.getEffectiveEndDate())));
     }
 
     private MonthRange resolveMonthRange(String yearMonthValue) {

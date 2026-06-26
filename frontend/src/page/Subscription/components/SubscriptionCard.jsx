@@ -58,6 +58,10 @@ export function SubscriptionCard({ subscription, category, onEdit, onDelete, isD
         </div>
       </dl>
 
+      {["PAUSED", "CANCELED"].includes(subscription.status) && (
+        <p className={styles.statusNotice}>일시정지/해지 이전 기간의 통계는 상태 이력 기준으로 유지됩니다.</p>
+      )}
+
       <div className={styles.cardActions}>
         <Button variant="outlined" size="small" onClick={() => onEdit(subscription)}>
           수정

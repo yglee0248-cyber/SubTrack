@@ -1,7 +1,16 @@
+import dayjs from "dayjs";
 import * as yup from "yup";
 
 function emptyStringToUndefined(value, originalValue) {
   return originalValue === "" ? undefined : value;
+}
+
+function isDateBefore(left, right) {
+  return Boolean(left && right && left < right);
+}
+
+function isInactiveStatus(status) {
+  return status === "PAUSED" || status === "CANCELED";
 }
 
 export const subscriptionSchema = yup.object({
@@ -42,4 +51,20 @@ export const subscriptionSchema = yup.object({
     .string()
     .oneOf(["ACTIVE", "PAUSED", "CANCELED"], "구독 상태를 선택해주세요.")
     .required("구독 상태를 선택해주세요."),
+  statusEffectiveDate: yup
+    .string()
+    .nullable()
+    .when("status", {
+      is: isInactiveStatus,
+      then: (schema) =>
+        schema
+          .required("상태 적용일을 선택해주세요.")
+          .test("not-before-billing-start", "상태 적용일은 구독 시작일보다 이전일 수 없습니다.", function (value) {
+            return !isDateBefore(value, this.parent.billingStartDate);
+          })
+          .test("not-future", "미래 날짜의 상태 변경 예약은 아직 지원하지 않습니다.", (value) => {
+            return value <= dayjs().format("YYYY-MM-DD");
+          }),
+      otherwise: (schema) => schema.notRequired(),
+    }),
 });

@@ -10,13 +10,14 @@ SubTrack은 다음 순서로 개발합니다.
 4. JWT / Security 세팅
 5. 회원가입 / 로그인 / 내 정보 조회
 6. 구독 CRUD
-7. D-Day / 결제 예정 상태 계산
-8. 대시보드 API
-9. 프론트 초기 세팅
-10. 로그인 / 회원가입 화면
-11. 구독 목록 / 등록 / 수정 / 상세 화면
-12. 대시보드 화면
-13. P1 결제 완료 / 알림 / 테스트
+7. 구독 상태 이력 관리
+8. D-Day / 결제 예정 상태 계산
+9. 대시보드 API
+10. 프론트 초기 세팅
+11. 로그인 / 회원가입 화면
+12. 구독 목록 / 등록 / 수정 / 상세 화면
+13. 대시보드 화면
+14. P1 결제 완료 / 알림 / 테스트
 
 ---
 
@@ -92,6 +93,7 @@ src/main/resources/mapper/subscription/
 MemberDao
 CategoryDao
 SubscriptionDao
+SubscriptionStatusHistoryDao
 PaymentHistoryDao
 DashboardDao
 NotificationDao
@@ -416,7 +418,8 @@ features/member/validation/memberSchema.js
 | categoryId | 필수 |
 | price | 필수, 0 이상 |
 | billingCycle | MONTHLY 또는 YEARLY |
-| billingStartDate | 필수 날짜, 구독 시작일 또는 첫 결제일 |
+| billingStartDate | 필수 날짜, 구독 시작일 또는 첫 결제일, 미래 날짜 허용 |
+| statusEffectiveDate | PAUSED/CANCELED일 때 필수, billingStartDate 이상 오늘 이하 |
 | paymentMethod | 필수 |
 | status | ACTIVE, PAUSED, CANCELED |
 | memo | 500자 이하 |
@@ -474,12 +477,12 @@ SubTrack UI는 모바일에서 카드형 목록을 우선합니다.
 
 ### Dashboard
 
-- 이번 달 결제 예정액
-- 활성 구독 수
-- 7일 이내 결제 수
-- 연체 수
+- 선택 월 결제 구독 수
+- 월간 구독료 합계
+- 현재 기준 7일 이내 결제 수
+- 현재 기준 연체 수
 - 다가오는 결제 목록
-- 카테고리별 결제 예정액 차트
+- 카테고리별 월간 구독료 차트
 
 ### SubscriptionList
 
@@ -496,9 +499,10 @@ SubTrack UI는 모바일에서 카드형 목록을 우선합니다.
 - 카테고리
 - 금액
 - 결제주기
-- 다음 결제 예정일
+- 구독 시작일 또는 첫 결제일
 - 결제수단
 - 상태
+- 상태 적용일(PAUSED/CANCELED 변경 시)
 - 메모
 
 ### SubscriptionDetail

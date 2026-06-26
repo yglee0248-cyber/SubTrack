@@ -26,6 +26,7 @@ const DEFAULT_FORM_VALUES = {
   currency: "KRW",
   billingCycle: "MONTHLY",
   billingStartDate: dayjs().format("YYYY-MM-DD"),
+  statusEffectiveDate: dayjs().format("YYYY-MM-DD"),
   paymentMethod: "",
   memo: "",
   status: "ACTIVE",
@@ -43,6 +44,7 @@ function toFormValues(subscription) {
     currency: subscription.currency || "KRW",
     billingCycle: subscription.billingCycle || "MONTHLY",
     billingStartDate: subscription.billingStartDate || subscription.nextPaymentDate || dayjs().format("YYYY-MM-DD"),
+    statusEffectiveDate: dayjs().format("YYYY-MM-DD"),
     paymentMethod: subscription.paymentMethod || "",
     memo: subscription.memo || "",
     status: subscription.status || "ACTIVE",
@@ -64,6 +66,7 @@ export function SubscriptionFormModal({
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm({
     resolver: yupResolver(subscriptionSchema),
@@ -76,8 +79,11 @@ export function SubscriptionFormModal({
     }
   }, [initialValues, open, reset]);
 
+  const selectedStatus = watch("status") || "ACTIVE";
+  const shouldShowStatusEffectiveDate = selectedStatus !== "ACTIVE";
+
   const submitForm = (values) => {
-    onSubmit({
+    const payload = {
       categoryId: Number(values.categoryId),
       name: values.name.trim(),
       price: Number(values.price),
@@ -87,11 +93,18 @@ export function SubscriptionFormModal({
       paymentMethod: values.paymentMethod.trim(),
       memo: values.memo?.trim() || null,
       status: values.status,
-    });
+    };
+
+    if (values.status !== "ACTIVE" && values.statusEffectiveDate) {
+      payload.statusEffectiveDate = values.statusEffectiveDate;
+    }
+
+    onSubmit(payload);
   };
 
   const title = mode === "edit" ? "구독 수정" : "구독 추가";
   const disabled = isSubmitting || isInitialLoading;
+  const statusEffectiveDateLabel = selectedStatus === "CANCELED" ? "해지일" : "일시정지 시작일";
 
   return (
     <Dialog
@@ -237,6 +250,23 @@ export function SubscriptionFormModal({
                 ))}
               </TextField>
             </div>
+
+            {shouldShowStatusEffectiveDate && (
+              <TextField
+                label={statusEffectiveDateLabel}
+                type="date"
+                fullWidth
+                disabled={disabled}
+                InputLabelProps={{ shrink: true }}
+                inputProps={{ "data-testid": "subscription-status-effective-date-input" }}
+                error={Boolean(errors.statusEffectiveDate)}
+                helperText={
+                  errors.statusEffectiveDate?.message ||
+                  "상태 적용일부터 선택 월 대시보드 계산에 반영됩니다."
+                }
+                {...register("statusEffectiveDate")}
+              />
+            )}
 
             <TextField
               label="메모"

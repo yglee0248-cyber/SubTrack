@@ -44,6 +44,8 @@ public class SubscriptionCreateRequest {
     @Pattern(regexp = "ACTIVE|PAUSED|CANCELED", message = "상태는 ACTIVE, PAUSED, CANCELED만 가능합니다.")
     private String status;
 
+    private LocalDate statusEffectiveDate;
+
     public Long getCategoryId() {
         return categoryId;
     }
@@ -114,6 +116,14 @@ public class SubscriptionCreateRequest {
 
     public void setStatus(String status) {
         this.status = normalizeUppercase(status);
+    }
+
+    public LocalDate getStatusEffectiveDate() {
+        return statusEffectiveDate;
+    }
+
+    public void setStatusEffectiveDate(LocalDate statusEffectiveDate) {
+        this.statusEffectiveDate = statusEffectiveDate;
     }
 
     private String normalizeUppercase(String value) {

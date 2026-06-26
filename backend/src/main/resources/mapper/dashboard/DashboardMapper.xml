@@ -34,12 +34,6 @@
         AND s.deleted_at IS NULL
     </sql>
 
-    <select id="countActiveSubscriptions" resultType="int">
-        SELECT COUNT(*)
-        FROM subscription s
-        WHERE <include refid="CurrentActiveSubscriptionCondition" />
-    </select>
-
     <select id="countUpcomingSubscriptions" resultType="int">
         SELECT COUNT(*)
         FROM subscription s
@@ -69,9 +63,8 @@
         FROM subscription s
         INNER JOIN subscription_category c ON s.category_id = c.category_id
         WHERE s.member_id = #{memberId}
-          AND s.status = 'ACTIVE'
+          AND s.deleted_at IS NULL
           AND s.billing_start_date &lt;= #{endDate}
-          AND (s.deleted_at IS NULL OR DATE(s.deleted_at) &gt;= #{startDate})
     </select>
 
     <select id="findUpcomingSubscriptions" resultMap="UpcomingSubscriptionResultMap">

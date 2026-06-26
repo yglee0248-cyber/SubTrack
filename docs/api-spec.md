@@ -298,6 +298,25 @@ size=20
 }
 ```
 
+`billingStartDate`는 과거, 오늘, 미래 날짜를 모두 허용합니다. 앞으로 시작될 구독을 미리 등록할 수 있습니다.
+
+`status`가 `PAUSED` 또는 `CANCELED`인 상태로 등록하는 경우 `statusEffectiveDate`는 필수입니다. `statusEffectiveDate`는 `billingStartDate`보다 이전일 수 없고, MVP에서는 미래 날짜를 허용하지 않습니다.
+
+```json
+{
+  "categoryId": 1,
+  "name": "Netflix",
+  "price": 17000,
+  "currency": "KRW",
+  "billingCycle": "MONTHLY",
+  "billingStartDate": "2025-12-25",
+  "paymentMethod": "CARD",
+  "status": "CANCELED",
+  "statusEffectiveDate": "2026-06-10",
+  "memo": "해지 완료"
+}
+```
+
 ### Response data
 
 ```json
@@ -311,6 +330,8 @@ size=20
 ```
 
 서버는 `billingStartDate`의 일자를 기준으로 `billingAnchorDay`를 계산하고, `billingStartDate + billingCycle` 기준으로 현재 날짜에서 가장 가까운 `nextPaymentDate`를 계산합니다.
+
+구독 생성 시 `subscription_status_history`에도 상태 이력을 생성합니다. `ACTIVE` 등록은 `billingStartDate`부터 열린 이력으로 저장하고, `PAUSED`/`CANCELED` 등록은 `statusEffectiveDate` 이전 기간을 `ACTIVE` 이력으로 보존할 수 있습니다.
 
 ---
 
@@ -373,7 +394,7 @@ size=20
 }
 ```
 
-`billingStartDate`가 변경되면 `billingAnchorDay`와 현재 기준 `nextPaymentDate`를 다시 계산합니다.
+`billingStartDate`가 변경되면 `billingAnchorDay`와 현재 기준 `nextPaymentDate`를 다시 계산합니다. `billingStartDate`는 미래 날짜도 허용합니다. `status`가 `PAUSED` 또는 `CANCELED`로 변경되는 경우 `statusEffectiveDate`는 필수이며, 서버는 기존 열린 상태 이력을 종료하고 새 상태 이력을 생성합니다.
 
 ---
 
@@ -392,7 +413,7 @@ size=20
 }
 ```
 
-실제 삭제가 아니라 `deleted_at = NOW()`로 처리합니다.
+실제 삭제가 아니라 `deleted_at = NOW()`로 처리합니다. DELETE는 잘못 입력한 구독 데이터를 목록과 대시보드에서 제외하는 동작이며, 실제 구독 종료는 `status = CANCELED`로 처리합니다.
 
 ---
 
@@ -438,7 +459,7 @@ size=20
 
 월별 대시보드 요약 API입니다.
 
-월간 예상 금액은 `billingStartDate + billingCycle` 반복 규칙으로 선택 월에 발생하는 구독료를 합산합니다.
+월간 예상 금액은 `billingStartDate + billingCycle` 반복 규칙과 `subscription_status_history`를 기준으로 선택 월에 ACTIVE 상태였던 결제 발생분만 합산합니다.
 
 범위: P0
 
@@ -459,6 +480,15 @@ yearMonth=2026-06
   "overdueCount": 1
 }
 ```
+
+필드 의미:
+
+| 필드 | 의미 |
+|---|---|
+| activeSubscriptionCount | 선택 월에 결제가 발생하고 해당 결제 발생일이 ACTIVE 상태 이력에 포함되는 구독 수 |
+| monthlyExpectedAmount | 선택 월 결제 발생일이 ACTIVE 상태 이력에 포함되는 구독료 합계 |
+| upcomingCount | 현재 기준 7일 이내 `nextPaymentDate`가 있는 ACTIVE 구독 수 |
+| overdueCount | 현재 기준 `nextPaymentDate`가 오늘보다 이전인 ACTIVE 구독 수 |
 
 ---
 
@@ -496,7 +526,7 @@ days=7
 
 카테고리별 결제 예정액 API입니다.
 
-카테고리별 금액은 `billingStartDate + billingCycle` 반복 규칙으로 선택 월에 발생하는 구독료를 카테고리별로 합산합니다.
+카테고리별 금액은 `billingStartDate + billingCycle` 반복 규칙과 `subscription_status_history`를 기준으로 선택 월에 ACTIVE 상태였던 결제 발생분을 카테고리별로 합산합니다.
 
 범위: P0
 

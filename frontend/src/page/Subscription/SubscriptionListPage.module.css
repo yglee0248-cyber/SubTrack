@@ -213,6 +213,14 @@
   font-weight: 700;
 }
 
+.statusNotice {
+  margin: -4px 0 0;
+  color: #7a4d12;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .cardActions {
   display: flex;
   justify-content: flex-end;

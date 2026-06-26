@@ -9,6 +9,7 @@ SubTrack v1.5에서는 다음 테이블을 사용합니다.
 | member | P0 / P1 | 회원, 인증, 내 정보, 푸시 설정 |
 | subscription_category | P0 | 기본 구독 카테고리 |
 | subscription | P0 / P1 | 사용자의 구독 항목 |
+| subscription_status_history | P0 | 구독 상태 이력 |
 | payment_history | P1 | 결제 완료 이력 |
 | notification | P1 | 내부 알림 |
 | push_log | P1 | OneSignal 발송 로그 |
@@ -23,6 +24,8 @@ SubTrack v1.5에서는 다음 테이블을 사용합니다.
 member 1 : N subscription
 
 subscription_category 1 : N subscription
+
+subscription 1 : N subscription_status_history
 
 member 1 : N payment_history
 subscription 1 : N payment_history
@@ -109,7 +112,7 @@ MVP에서는 사용자별 커스텀 카테고리를 만들지 않고, 모든 사
 | billing_start_date | 구독 시작일 또는 첫 결제일 |
 | next_payment_date | 다음 결제 예정일 |
 | payment_method | 결제수단 |
-| status | ACTIVE, PAUSED, CANCELED |
+| status | 현재 상태: ACTIVE, PAUSED, CANCELED |
 | memo | 메모 |
 | created_at | 생성일 |
 | updated_at | 수정일 |
@@ -130,7 +133,37 @@ MVP에서는 사용자별 커스텀 카테고리를 만들지 않고, 모든 사
 
 ---
 
-## 6. payment_history
+## 6. subscription_status_history
+
+구독 상태 이력을 관리합니다.
+
+`subscription.status`는 현재 상태를 빠르게 조회하기 위한 값이고, 대시보드의 선택 월 구독료 계산은 이 테이블의 상태 기간을 기준으로 판단합니다.
+
+| 컬럼 | 설명 |
+|---|---|
+| status_history_id | PK |
+| subscription_id | 구독 ID |
+| status | ACTIVE, PAUSED, CANCELED |
+| effective_start_date | 상태 적용 시작일 |
+| effective_end_date | 상태 적용 종료일, 열린 이력은 NULL |
+| created_at | 생성일 |
+
+제약 조건:
+
+| 종류 | 내용 |
+|---|---|
+| PK | status_history_id |
+| FK | subscription_id -> subscription.subscription_id |
+| CHECK | status IN ('ACTIVE', 'PAUSED', 'CANCELED') |
+| CHECK | effective_end_date IS NULL OR effective_start_date <= effective_end_date |
+| INDEX | subscription_id, effective_start_date, effective_end_date |
+| INDEX | subscription_id, status, effective_start_date, effective_end_date |
+
+MySQL에서는 subscription별 열린 이력 1개만 허용하는 partial unique index를 단순하게 적용하기 어렵기 때문에, 열린 이력 관리는 Service 트랜잭션에서 보장합니다.
+
+---
+
+## 7. payment_history
 
 P1 결제 완료 이력을 관리합니다.
 
@@ -162,7 +195,7 @@ P1 결제 완료 이력을 관리합니다.
 
 ---
 
-## 7. notification
+## 8. notification
 
 P1 내부 알림 목록을 관리합니다.
 
@@ -191,7 +224,7 @@ P1 내부 알림 목록을 관리합니다.
 
 ---
 
-## 8. push_log
+## 9. push_log
 
 P1 OneSignal 발송 결과를 관리합니다.
 
@@ -226,13 +259,14 @@ P1 OneSignal 발송 결과를 관리합니다.
 
 ---
 
-## 9. P0 / P1 구분
+## 10. P0 / P1 구분
 
 ### P0에서 실제로 사용하는 테이블
 
 - member
 - subscription_category
 - subscription
+- subscription_status_history
 
 ### P1에서 추가로 사용하는 테이블
 

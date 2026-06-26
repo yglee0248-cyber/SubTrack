@@ -10,8 +10,6 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface DashboardDao {
 
-    int countActiveSubscriptions(@Param("memberId") Long memberId);
-
     int countUpcomingSubscriptions(
             @Param("memberId") Long memberId,
             @Param("today") LocalDate today,

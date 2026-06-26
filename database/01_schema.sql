@@ -67,6 +67,26 @@ CREATE TABLE subscription (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
+CREATE TABLE subscription_status_history (
+    status_history_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '구독 상태 이력 ID',
+    subscription_id BIGINT NOT NULL COMMENT '구독 ID',
+    status VARCHAR(20) NOT NULL COMMENT '상태: ACTIVE, PAUSED, CANCELED',
+    effective_start_date DATE NOT NULL COMMENT '상태 적용 시작일',
+    effective_end_date DATE NULL COMMENT '상태 적용 종료일',
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (status_history_id),
+    CONSTRAINT fk_subscription_status_history_subscription
+        FOREIGN KEY (subscription_id) REFERENCES subscription (subscription_id)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT chk_subscription_status_history_status
+        CHECK (status IN ('ACTIVE', 'PAUSED', 'CANCELED')),
+    CONSTRAINT chk_subscription_status_history_date_range
+        CHECK (effective_end_date IS NULL OR effective_start_date <= effective_end_date),
+    KEY idx_status_history_subscription_period (subscription_id, effective_start_date, effective_end_date),
+    KEY idx_status_history_subscription_status (subscription_id, status, effective_start_date, effective_end_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='구독 상태 이력';
+
+
 CREATE TABLE payment_history (
     payment_history_id BIGINT NOT NULL AUTO_INCREMENT,
     subscription_id BIGINT NOT NULL,
