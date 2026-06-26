@@ -151,7 +151,7 @@ database/
 
 `billing_anchor_day`는 반복 결제일 계산의 기준일입니다.
 
-사용자가 입력한 `next_payment_date`의 일자를 기준값으로 사용합니다.
+사용자가 입력한 `billing_start_date`의 일자를 기준값으로 사용합니다.
 
 예시:
 
@@ -173,8 +173,9 @@ billing_anchor_day = 31
 UPCOMING   : 8일 이후
 DUE_SOON   : 1~7일 이내
 DUE_TODAY  : 오늘
-OVERDUE    : 오늘보다 이전
 ```
+
+MVP에서는 실제 결제 완료 여부를 추적하지 않으므로 미납 상태를 판단하지 않습니다.
 
 ### 3. 결제 완료 중복 방지
 

@@ -9,20 +9,20 @@ public class DashboardSummaryResponse {
     private final int activeSubscriptionCount;
     private final BigDecimal monthlyExpectedAmount;
     private final int upcomingCount;
-    private final int overdueCount;
+    private final int dueTodayCount;
 
     public DashboardSummaryResponse(
             String yearMonth,
             int activeSubscriptionCount,
             BigDecimal monthlyExpectedAmount,
             int upcomingCount,
-            int overdueCount
+            int dueTodayCount
     ) {
         this.yearMonth = yearMonth;
         this.activeSubscriptionCount = activeSubscriptionCount;
         this.monthlyExpectedAmount = monthlyExpectedAmount;
         this.upcomingCount = upcomingCount;
-        this.overdueCount = overdueCount;
+        this.dueTodayCount = dueTodayCount;
     }
 
     public static DashboardSummaryResponse of(String yearMonth, DashboardSummary summary) {
@@ -31,7 +31,7 @@ public class DashboardSummaryResponse {
                 valueOrZero(summary.getActiveSubscriptionCount()),
                 amountOrZero(summary.getMonthlyExpectedAmount()),
                 valueOrZero(summary.getUpcomingCount()),
-                valueOrZero(summary.getOverdueCount())
+                valueOrZero(summary.getDueTodayCount())
         );
     }
 
@@ -51,8 +51,8 @@ public class DashboardSummaryResponse {
         return upcomingCount;
     }
 
-    public int getOverdueCount() {
-        return overdueCount;
+    public int getDueTodayCount() {
+        return dueTodayCount;
     }
 
     private static int valueOrZero(Integer value) {

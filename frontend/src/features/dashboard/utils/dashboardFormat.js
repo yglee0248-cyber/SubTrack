@@ -4,7 +4,6 @@ const paymentStatusLabelMap = {
   UPCOMING: "예정",
   DUE_SOON: "임박",
   DUE_TODAY: "오늘 결제",
-  OVERDUE: "연체",
 };
 
 export function getCurrentYearMonth() {
@@ -43,10 +42,6 @@ export function getDashboardPaymentStatusLabel(paymentStatus) {
 }
 
 export function getDashboardPaymentStatusTone(paymentStatus) {
-  if (paymentStatus === "OVERDUE") {
-    return "danger";
-  }
-
   if (paymentStatus === "DUE_TODAY") {
     return "today";
   }

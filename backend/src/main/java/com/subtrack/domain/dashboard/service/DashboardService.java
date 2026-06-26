@@ -8,6 +8,7 @@ import com.subtrack.domain.dashboard.vo.CategoryExpense;
 import com.subtrack.domain.dashboard.vo.DashboardSummary;
 import com.subtrack.domain.dashboard.vo.DashboardSubscription;
 import com.subtrack.domain.subscription.dao.SubscriptionStatusHistoryDao;
+import com.subtrack.domain.subscription.service.SubscriptionNextPaymentDateNormalizer;
 import com.subtrack.domain.subscription.vo.SubscriptionStatusHistory;
 import com.subtrack.global.exception.BusinessException;
 import com.subtrack.global.exception.ErrorCode;
@@ -38,14 +39,21 @@ public class DashboardService {
 
     private final DashboardDao dashboardDao;
     private final SubscriptionStatusHistoryDao statusHistoryDao;
+    private final SubscriptionNextPaymentDateNormalizer nextPaymentDateNormalizer;
 
-    public DashboardService(DashboardDao dashboardDao, SubscriptionStatusHistoryDao statusHistoryDao) {
+    public DashboardService(
+            DashboardDao dashboardDao,
+            SubscriptionStatusHistoryDao statusHistoryDao,
+            SubscriptionNextPaymentDateNormalizer nextPaymentDateNormalizer
+    ) {
         this.dashboardDao = dashboardDao;
         this.statusHistoryDao = statusHistoryDao;
+        this.nextPaymentDateNormalizer = nextPaymentDateNormalizer;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public DashboardSummaryResponse getSummary(Long memberId, String yearMonthValue) {
+        nextPaymentDateNormalizer.normalizeActiveSubscriptions(memberId);
         MonthRange monthRange = resolveMonthRange(yearMonthValue);
         LocalDate today = getToday();
         List<DashboardSubscription> monthlySubscriptions = findActiveSubscriptionsOccurringInMonth(
@@ -61,13 +69,14 @@ public class DashboardService {
                 today,
                 today.plusDays(DEFAULT_UPCOMING_DAYS)
         ));
-        summary.setOverdueCount(dashboardDao.countOverdueSubscriptions(memberId, today));
+        summary.setDueTodayCount(dashboardDao.countDueTodaySubscriptions(memberId, today));
 
         return DashboardSummaryResponse.of(monthRange.getYearMonth(), summary);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<UpcomingSubscriptionResponse> getUpcomingSubscriptions(Long memberId, Integer days) {
+        nextPaymentDateNormalizer.normalizeActiveSubscriptions(memberId);
         int resolvedDays = resolveUpcomingDays(days);
         LocalDate today = getToday();
 
@@ -77,8 +86,9 @@ public class DashboardService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<CategoryExpenseResponse> getCategoryExpenses(Long memberId, String yearMonthValue) {
+        nextPaymentDateNormalizer.normalizeActiveSubscriptions(memberId);
         MonthRange monthRange = resolveMonthRange(yearMonthValue);
 
         return calculateCategoryExpenses(memberId, monthRange)

@@ -110,7 +110,7 @@ MVP에서는 사용자별 커스텀 카테고리를 만들지 않고, 모든 사
 | billing_cycle | MONTHLY, YEARLY |
 | billing_anchor_day | 반복 결제 기준일 |
 | billing_start_date | 구독 시작일 또는 첫 결제일 |
-| next_payment_date | 다음 결제 예정일 |
+| next_payment_date | 현재 날짜 기준 다음 결제 예정일 |
 | payment_method | 결제수단 |
 | status | 현재 상태: ACTIVE, PAUSED, CANCELED |
 | memo | 메모 |

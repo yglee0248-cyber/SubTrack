@@ -249,7 +249,8 @@ Calculate payment status from `next_payment_date` and today's date.
 - UPCOMING: next_payment_date is after 8 or more days
 - DUE_SOON: next_payment_date is within 1 to 7 days
 - DUE_TODAY: next_payment_date is today
-- OVERDUE: next_payment_date is before today
+
+MVP does not infer unpaid status from past dates. Active subscriptions should normalize `next_payment_date` to the closest upcoming scheduled date.
 
 ### Complete Payment
 

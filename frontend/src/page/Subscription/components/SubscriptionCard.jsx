@@ -14,6 +14,11 @@ export function SubscriptionCard({ subscription, category, onEdit, onDelete, isD
   const statusTone = getStatusTone(subscription.status);
   const paymentTone = getPaymentStatusTone(subscription.paymentStatus);
   const categoryColor = category?.colorCode || "#98a2b3";
+  const isActive = subscription.status === "ACTIVE";
+  const statusDateLabel = subscription.status === "CANCELED" ? "해지일" : "일시정지 시작일";
+  const statusDateNotice = subscription.status === "CANCELED"
+    ? "해지 이전 기간의 통계는 상태 이력 기준으로 유지됩니다."
+    : "일시정지 이전 기간의 통계는 상태 이력 기준으로 유지됩니다.";
 
   return (
     <article className={styles.card} data-testid="subscription-card">
@@ -26,9 +31,11 @@ export function SubscriptionCard({ subscription, category, onEdit, onDelete, isD
           <h2 className={styles.cardTitle}>{subscription.name}</h2>
         </div>
         <div className={styles.badgeGroup}>
-          <span className={`${styles.badge} ${styles[`badge_${paymentTone}`]}`}>
-            {getPaymentStatusLabel(subscription.paymentStatus)}
-          </span>
+          {isActive && (
+            <span className={`${styles.badge} ${styles[`badge_${paymentTone}`]}`}>
+              {getPaymentStatusLabel(subscription.paymentStatus)}
+            </span>
+          )}
           <span className={`${styles.badge} ${styles[`badge_${statusTone}`]}`}>
             {getSubscriptionStatusLabel(subscription.status)}
           </span>
@@ -49,8 +56,8 @@ export function SubscriptionCard({ subscription, category, onEdit, onDelete, isD
           <dd>{formatPaymentDate(subscription.billingStartDate || subscription.nextPaymentDate)}</dd>
         </div>
         <div>
-          <dt>다음 결제일</dt>
-          <dd>{formatPaymentDate(subscription.nextPaymentDate)}</dd>
+          <dt>{isActive ? "다음 결제일" : statusDateLabel}</dt>
+          <dd>{formatPaymentDate(isActive ? subscription.nextPaymentDate : subscription.statusEffectiveDate)}</dd>
         </div>
         <div>
           <dt>결제 수단</dt>
@@ -58,9 +65,7 @@ export function SubscriptionCard({ subscription, category, onEdit, onDelete, isD
         </div>
       </dl>
 
-      {["PAUSED", "CANCELED"].includes(subscription.status) && (
-        <p className={styles.statusNotice}>일시정지/해지 이전 기간의 통계는 상태 이력 기준으로 유지됩니다.</p>
-      )}
+      {!isActive && <p className={styles.statusNotice}>{statusDateNotice}</p>}
 
       <div className={styles.cardActions}>
         <Button variant="outlined" size="small" onClick={() => onEdit(subscription)}>

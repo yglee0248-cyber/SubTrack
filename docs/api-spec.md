@@ -263,6 +263,7 @@ size=20
       "billingAnchorDay": 25,
       "billingStartDate": "2025-12-25",
       "nextPaymentDate": "2026-06-25",
+      "statusEffectiveDate": "2025-12-25",
       "paymentStatus": "DUE_TODAY",
       "paymentMethod": "CARD",
       "status": "ACTIVE"
@@ -355,6 +356,7 @@ size=20
   "billingAnchorDay": 25,
   "billingStartDate": "2025-12-25",
   "nextPaymentDate": "2026-06-25",
+  "statusEffectiveDate": "2025-12-25",
   "paymentStatus": "DUE_TODAY",
   "paymentMethod": "CARD",
   "status": "ACTIVE",
@@ -477,7 +479,7 @@ yearMonth=2026-06
   "activeSubscriptionCount": 5,
   "monthlyExpectedAmount": 54000,
   "upcomingCount": 2,
-  "overdueCount": 1
+  "dueTodayCount": 1
 }
 ```
 
@@ -487,8 +489,10 @@ yearMonth=2026-06
 |---|---|
 | activeSubscriptionCount | 선택 월에 결제가 발생하고 해당 결제 발생일이 ACTIVE 상태 이력에 포함되는 구독 수 |
 | monthlyExpectedAmount | 선택 월 결제 발생일이 ACTIVE 상태 이력에 포함되는 구독료 합계 |
-| upcomingCount | 현재 기준 7일 이내 `nextPaymentDate`가 있는 ACTIVE 구독 수 |
-| overdueCount | 현재 기준 `nextPaymentDate`가 오늘보다 이전인 ACTIVE 구독 수 |
+| upcomingCount | 현재 기준 오늘부터 7일 이내 `nextPaymentDate`가 있는 ACTIVE 구독 수 |
+| dueTodayCount | 현재 기준 오늘 결제 예정인 ACTIVE 구독 수 |
+
+MVP에서는 `payment_history` 기반 결제 완료 여부를 추적하지 않으므로 미납 상태를 판단하지 않습니다.
 
 ---
 

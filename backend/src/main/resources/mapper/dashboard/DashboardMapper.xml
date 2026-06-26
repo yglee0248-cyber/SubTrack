@@ -41,11 +41,11 @@
           AND s.next_payment_date BETWEEN #{today} AND #{endDate}
     </select>
 
-    <select id="countOverdueSubscriptions" resultType="int">
+    <select id="countDueTodaySubscriptions" resultType="int">
         SELECT COUNT(*)
         FROM subscription s
         WHERE <include refid="CurrentActiveSubscriptionCondition" />
-          AND s.next_payment_date &lt; #{today}
+          AND s.next_payment_date = #{today}
     </select>
 
     <select id="findRecurringDashboardSubscriptions" resultMap="DashboardSubscriptionResultMap">

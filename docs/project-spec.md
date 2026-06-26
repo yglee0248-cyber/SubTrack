@@ -188,7 +188,7 @@ Dashboard 월간 구독료 합계는 `next_payment_date`가 아니라 `billing_s
 제외 조건:
 
 - 선택 월 대시보드는 반복 결제 발생일이 `ACTIVE` 상태 이력에 포함될 때만 집계
-- 현재 기준 upcoming, overdue, 알림 대상은 현재 `status = ACTIVE`이고 `deleted_at IS NULL`인 구독만 사용
+- 현재 기준 upcoming, due today, 알림 대상은 현재 `status = ACTIVE`이고 `deleted_at IS NULL`인 구독만 사용
 - `deleted_at IS NOT NULL`인 구독은 목록, 대시보드, 알림 대상에서 전체 제외
 
 ---
@@ -221,12 +221,15 @@ Dashboard 월간 구독료 합계는 `next_payment_date`가 아니라 `billing_s
 
 서버 응답 시점에 `next_payment_date`와 오늘 날짜를 비교해 계산합니다.
 
+ACTIVE 구독의 `next_payment_date`는 조회 시 현재 날짜 기준 가장 가까운 다음 결제 예정일로 보정합니다.
+
+MVP에서는 `payment_history` 기반 결제 완료 여부를 추적하지 않으므로 미납 상태를 판단하지 않습니다. 실제 미결제 판단은 P1 이후 결제 이력 기능에서 재검토합니다.
+
 | 상태 | 조건 |
 |---|---|
 | UPCOMING | next_payment_date가 8일 이후 |
 | DUE_SOON | next_payment_date가 1~7일 이내 |
 | DUE_TODAY | next_payment_date가 오늘 |
-| OVERDUE | next_payment_date가 오늘보다 이전 |
 
 ---
 

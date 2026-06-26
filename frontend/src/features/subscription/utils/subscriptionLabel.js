@@ -15,7 +15,6 @@ export const PAYMENT_STATUS_OPTIONS = [
   { value: "UPCOMING", label: "예정" },
   { value: "DUE_SOON", label: "임박" },
   { value: "DUE_TODAY", label: "오늘 결제" },
-  { value: "OVERDUE", label: "연체" },
 ];
 
 const billingCycleLabelMap = Object.fromEntries(
@@ -73,10 +72,6 @@ export function getStatusTone(status) {
 }
 
 export function getPaymentStatusTone(paymentStatus) {
-  if (paymentStatus === "OVERDUE") {
-    return "danger";
-  }
-
   if (paymentStatus === "DUE_TODAY") {
     return "today";
   }

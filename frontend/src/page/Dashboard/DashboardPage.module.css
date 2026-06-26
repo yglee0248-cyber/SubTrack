@@ -269,11 +269,6 @@
   color: #11763f;
 }
 
-.badge_danger {
-  background: #ffe9e7;
-  color: #b42318;
-}
-
 .chartContent {
   display: grid;
   gap: 16px;

@@ -56,6 +56,7 @@ public class SubscriptionListResponse {
         private final LocalDate billingStartDate;
         private final Integer billingAnchorDay;
         private final LocalDate nextPaymentDate;
+        private final LocalDate statusEffectiveDate;
         private final String paymentMethod;
         private final String status;
         private final String paymentStatus;
@@ -71,6 +72,7 @@ public class SubscriptionListResponse {
                 LocalDate billingStartDate,
                 Integer billingAnchorDay,
                 LocalDate nextPaymentDate,
+                LocalDate statusEffectiveDate,
                 String paymentMethod,
                 String status,
                 String paymentStatus
@@ -85,6 +87,7 @@ public class SubscriptionListResponse {
             this.billingStartDate = billingStartDate;
             this.billingAnchorDay = billingAnchorDay;
             this.nextPaymentDate = nextPaymentDate;
+            this.statusEffectiveDate = statusEffectiveDate;
             this.paymentMethod = paymentMethod;
             this.status = status;
             this.paymentStatus = paymentStatus;
@@ -102,6 +105,7 @@ public class SubscriptionListResponse {
                     subscription.getBillingStartDate(),
                     subscription.getBillingAnchorDay(),
                     subscription.getNextPaymentDate(),
+                    subscription.getStatusEffectiveDate(),
                     subscription.getPaymentMethod(),
                     subscription.getStatus(),
                     PaymentStatusCalculator.calculate(subscription.getNextPaymentDate())
@@ -146,6 +150,10 @@ public class SubscriptionListResponse {
 
         public LocalDate getNextPaymentDate() {
             return nextPaymentDate;
+        }
+
+        public LocalDate getStatusEffectiveDate() {
+            return statusEffectiveDate;
         }
 
         public String getPaymentMethod() {

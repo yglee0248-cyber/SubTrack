@@ -42,18 +42,21 @@ public class SubscriptionService {
     private final SubscriptionDao subscriptionDao;
     private final CategoryDao categoryDao;
     private final SubscriptionStatusHistoryDao statusHistoryDao;
+    private final SubscriptionNextPaymentDateNormalizer nextPaymentDateNormalizer;
 
     public SubscriptionService(
             SubscriptionDao subscriptionDao,
             CategoryDao categoryDao,
-            SubscriptionStatusHistoryDao statusHistoryDao
+            SubscriptionStatusHistoryDao statusHistoryDao,
+            SubscriptionNextPaymentDateNormalizer nextPaymentDateNormalizer
     ) {
         this.subscriptionDao = subscriptionDao;
         this.categoryDao = categoryDao;
         this.statusHistoryDao = statusHistoryDao;
+        this.nextPaymentDateNormalizer = nextPaymentDateNormalizer;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public SubscriptionListResponse getSubscriptions(
             Long memberId,
             String keyword,
@@ -63,6 +66,7 @@ public class SubscriptionService {
             Integer page,
             Integer size
     ) {
+        nextPaymentDateNormalizer.normalizeActiveSubscriptions(memberId);
         SubscriptionSearchCondition condition = buildSearchCondition(
                 memberId,
                 keyword,
@@ -95,9 +99,11 @@ public class SubscriptionService {
         return new SubscriptionCreateResponse(subscription.getSubscriptionId());
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public SubscriptionDetailResponse getSubscription(Long memberId, Long subscriptionId) {
-        return SubscriptionDetailResponse.from(findOwnedSubscription(memberId, subscriptionId));
+        Subscription subscription = findOwnedSubscription(memberId, subscriptionId);
+        nextPaymentDateNormalizer.normalizeIfNeeded(subscription);
+        return SubscriptionDetailResponse.from(subscription);
     }
 
     @Transactional

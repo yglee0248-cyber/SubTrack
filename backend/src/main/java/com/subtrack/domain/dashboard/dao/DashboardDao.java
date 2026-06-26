@@ -16,7 +16,7 @@ public interface DashboardDao {
             @Param("endDate") LocalDate endDate
     );
 
-    int countOverdueSubscriptions(
+    int countDueTodaySubscriptions(
             @Param("memberId") Long memberId,
             @Param("today") LocalDate today
     );

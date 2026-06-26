@@ -17,6 +17,7 @@
         <result property="billingAnchorDay" column="billing_anchor_day" />
         <result property="billingStartDate" column="billing_start_date" />
         <result property="nextPaymentDate" column="next_payment_date" />
+        <result property="statusEffectiveDate" column="status_effective_date" />
         <result property="paymentMethod" column="payment_method" />
         <result property="status" column="status" />
         <result property="memo" column="memo" />
@@ -37,6 +38,7 @@
         s.billing_anchor_day,
         s.billing_start_date,
         s.next_payment_date,
+        h.effective_start_date AS status_effective_date,
         s.payment_method,
         s.status,
         s.memo,
@@ -67,9 +69,6 @@
             <when test="paymentStatus == 'DUE_TODAY'">
           AND DATEDIFF(s.next_payment_date, CURDATE()) = 0
             </when>
-            <when test="paymentStatus == 'OVERDUE'">
-          AND DATEDIFF(s.next_payment_date, CURDATE()) &lt; 0
-            </when>
         </choose>
     </sql>
 
@@ -80,9 +79,25 @@
             <include refid="SubscriptionColumns" />
         FROM subscription s
         INNER JOIN subscription_category c ON s.category_id = c.category_id
+        LEFT JOIN subscription_status_history h
+          ON s.subscription_id = h.subscription_id
+         AND h.effective_end_date IS NULL
         <include refid="SubscriptionSearchWhere" />
         ORDER BY s.next_payment_date ASC, s.subscription_id DESC
         LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="findActiveSubscriptionsByMemberId" resultMap="SubscriptionResultMap">
+        SELECT
+            <include refid="SubscriptionColumns" />
+        FROM subscription s
+        INNER JOIN subscription_category c ON s.category_id = c.category_id
+        LEFT JOIN subscription_status_history h
+          ON s.subscription_id = h.subscription_id
+         AND h.effective_end_date IS NULL
+        WHERE s.member_id = #{memberId}
+          AND s.status = 'ACTIVE'
+          AND s.deleted_at IS NULL
     </select>
 
     <select id="countSubscriptions"
@@ -99,6 +114,9 @@
             <include refid="SubscriptionColumns" />
         FROM subscription s
         INNER JOIN subscription_category c ON s.category_id = c.category_id
+        LEFT JOIN subscription_status_history h
+          ON s.subscription_id = h.subscription_id
+         AND h.effective_end_date IS NULL
         WHERE s.subscription_id = #{subscriptionId}
           AND s.member_id = #{memberId}
           AND s.deleted_at IS NULL
@@ -154,6 +172,15 @@
             memo = #{memo}
         WHERE subscription_id = #{subscriptionId}
           AND member_id = #{memberId}
+          AND deleted_at IS NULL
+    </update>
+
+    <update id="updateNextPaymentDate">
+        UPDATE subscription
+        SET next_payment_date = #{nextPaymentDate}
+        WHERE subscription_id = #{subscriptionId}
+          AND member_id = #{memberId}
+          AND status = 'ACTIVE'
           AND deleted_at IS NULL
     </update>
 

@@ -17,6 +17,7 @@ public class Subscription {
     private Integer billingAnchorDay;
     private LocalDate billingStartDate;
     private LocalDate nextPaymentDate;
+    private LocalDate statusEffectiveDate;
     private String paymentMethod;
     private String status;
     private String memo;
@@ -110,6 +111,14 @@ public class Subscription {
 
     public void setNextPaymentDate(LocalDate nextPaymentDate) {
         this.nextPaymentDate = nextPaymentDate;
+    }
+
+    public LocalDate getStatusEffectiveDate() {
+        return statusEffectiveDate;
+    }
+
+    public void setStatusEffectiveDate(LocalDate statusEffectiveDate) {
+        this.statusEffectiveDate = statusEffectiveDate;
     }
 
     public String getPaymentMethod() {

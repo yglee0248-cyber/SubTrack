@@ -133,9 +133,9 @@ function DashboardPage() {
           loading={summaryQuery.isLoading}
         />
         <SummaryCard
-          label="현재 기준 연체 구독"
-          value={formatDashboardCount(summary.overdueCount)}
-          helper="오늘 이전 결제일이 남아 있는 활성 구독입니다."
+          label="오늘 결제 예정"
+          value={formatDashboardCount(summary.dueTodayCount)}
+          helper="오늘 결제일인 활성 구독 수입니다."
           tone="red"
           loading={summaryQuery.isLoading}
         />

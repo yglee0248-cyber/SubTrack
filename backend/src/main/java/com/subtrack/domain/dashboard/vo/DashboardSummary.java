@@ -7,7 +7,7 @@ public class DashboardSummary {
     private Integer activeSubscriptionCount;
     private BigDecimal monthlyExpectedAmount;
     private Integer upcomingCount;
-    private Integer overdueCount;
+    private Integer dueTodayCount;
 
     public Integer getActiveSubscriptionCount() {
         return activeSubscriptionCount;
@@ -33,11 +33,11 @@ public class DashboardSummary {
         this.upcomingCount = upcomingCount;
     }
 
-    public Integer getOverdueCount() {
-        return overdueCount;
+    public Integer getDueTodayCount() {
+        return dueTodayCount;
     }
 
-    public void setOverdueCount(Integer overdueCount) {
-        this.overdueCount = overdueCount;
+    public void setDueTodayCount(Integer dueTodayCount) {
+        this.dueTodayCount = dueTodayCount;
     }
 }
