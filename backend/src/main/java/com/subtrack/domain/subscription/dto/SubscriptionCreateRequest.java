@@ -1,5 +1,6 @@
 package com.subtrack.domain.subscription.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -14,8 +15,8 @@ public class SubscriptionCreateRequest {
     @NotNull(message = "카테고리는 필수입니다.")
     private Long categoryId;
 
-    @NotBlank(message = "구독명은 필수입니다.")
-    @Size(max = 100, message = "구독명은 100자 이하여야 합니다.")
+    @NotBlank(message = "구독 이름은 필수입니다.")
+    @Size(max = 100, message = "구독 이름은 100자 이하여야 합니다.")
     private String name;
 
     @NotNull(message = "가격은 필수입니다.")
@@ -29,11 +30,12 @@ public class SubscriptionCreateRequest {
     @Pattern(regexp = "MONTHLY|YEARLY", message = "결제 주기는 MONTHLY 또는 YEARLY만 가능합니다.")
     private String billingCycle;
 
-    @NotNull(message = "다음 결제일은 필수입니다.")
-    private LocalDate nextPaymentDate;
+    @JsonAlias("nextPaymentDate")
+    @NotNull(message = "구독 시작일 또는 첫 결제일은 필수입니다.")
+    private LocalDate billingStartDate;
 
-    @NotBlank(message = "결제수단은 필수입니다.")
-    @Size(max = 30, message = "결제수단은 30자 이하여야 합니다.")
+    @NotBlank(message = "결제 수단은 필수입니다.")
+    @Size(max = 30, message = "결제 수단은 30자 이하여야 합니다.")
     private String paymentMethod;
 
     @Size(max = 500, message = "메모는 500자 이하여야 합니다.")
@@ -82,12 +84,12 @@ public class SubscriptionCreateRequest {
         this.billingCycle = normalizeUppercase(billingCycle);
     }
 
-    public LocalDate getNextPaymentDate() {
-        return nextPaymentDate;
+    public LocalDate getBillingStartDate() {
+        return billingStartDate;
     }
 
-    public void setNextPaymentDate(LocalDate nextPaymentDate) {
-        this.nextPaymentDate = nextPaymentDate;
+    public void setBillingStartDate(LocalDate billingStartDate) {
+        this.billingStartDate = billingStartDate;
     }
 
     public String getPaymentMethod() {

@@ -45,6 +45,10 @@ export function SubscriptionCard({ subscription, category, onEdit, onDelete, isD
           <dd>{getBillingCycleLabel(subscription.billingCycle)}</dd>
         </div>
         <div>
+          <dt>구독 시작일</dt>
+          <dd>{formatPaymentDate(subscription.billingStartDate || subscription.nextPaymentDate)}</dd>
+        </div>
+        <div>
           <dt>다음 결제일</dt>
           <dd>{formatPaymentDate(subscription.nextPaymentDate)}</dd>
         </div>

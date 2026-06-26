@@ -79,9 +79,9 @@ function SubscriptionListPage() {
   const createMutation = useMutation({
     mutationFn: createSubscription,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+      invalidateSubscriptionQueries();
       closeModal();
-      showSnackbar("구독을 등록했습니다.", "success");
+      showSnackbar("구독이 등록되었습니다.", "success");
     },
     onError: (error) => {
       setFormErrorMessage(getApiErrorMessage(error, "구독 등록에 실패했습니다."));
@@ -91,10 +91,10 @@ function SubscriptionListPage() {
   const updateMutation = useMutation({
     mutationFn: ({ subscriptionId, payload }) => updateSubscription(subscriptionId, payload),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+      invalidateSubscriptionQueries();
       queryClient.invalidateQueries({ queryKey: ["subscription", variables.subscriptionId] });
       closeModal();
-      showSnackbar("구독을 수정했습니다.", "success");
+      showSnackbar("구독이 수정되었습니다.", "success");
     },
     onError: (error) => {
       setFormErrorMessage(getApiErrorMessage(error, "구독 수정에 실패했습니다."));
@@ -104,8 +104,8 @@ function SubscriptionListPage() {
   const deleteMutation = useMutation({
     mutationFn: deleteSubscription,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
-      showSnackbar("구독을 삭제했습니다.", "success");
+      invalidateSubscriptionQueries();
+      showSnackbar("구독이 삭제되었습니다.", "success");
     },
     onError: (error) => {
       showSnackbar(getApiErrorMessage(error, "구독 삭제에 실패했습니다."), "error");
@@ -113,6 +113,13 @@ function SubscriptionListPage() {
   });
 
   const isModalSubmitting = createMutation.isPending || updateMutation.isPending;
+
+  function invalidateSubscriptionQueries() {
+    queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboardSummary"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboardUpcoming"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboardCategoryExpenses"] });
+  }
 
   function showSnackbar(message, severity = "success") {
     setSnackbar({

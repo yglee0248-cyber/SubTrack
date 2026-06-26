@@ -25,7 +25,7 @@ const DEFAULT_FORM_VALUES = {
   price: "",
   currency: "KRW",
   billingCycle: "MONTHLY",
-  nextPaymentDate: dayjs().format("YYYY-MM-DD"),
+  billingStartDate: dayjs().format("YYYY-MM-DD"),
   paymentMethod: "",
   memo: "",
   status: "ACTIVE",
@@ -42,7 +42,7 @@ function toFormValues(subscription) {
     price: subscription.price ?? "",
     currency: subscription.currency || "KRW",
     billingCycle: subscription.billingCycle || "MONTHLY",
-    nextPaymentDate: subscription.nextPaymentDate || dayjs().format("YYYY-MM-DD"),
+    billingStartDate: subscription.billingStartDate || subscription.nextPaymentDate || dayjs().format("YYYY-MM-DD"),
     paymentMethod: subscription.paymentMethod || "",
     memo: subscription.memo || "",
     status: subscription.status || "ACTIVE",
@@ -83,7 +83,7 @@ export function SubscriptionFormModal({
       price: Number(values.price),
       currency: values.currency.trim().toUpperCase(),
       billingCycle: values.billingCycle,
-      nextPaymentDate: values.nextPaymentDate,
+      billingStartDate: values.billingStartDate,
       paymentMethod: values.paymentMethod.trim(),
       memo: values.memo?.trim() || null,
       status: values.status,
@@ -194,15 +194,15 @@ export function SubscriptionFormModal({
               </TextField>
 
               <TextField
-                label="다음 결제일"
+                label="구독 시작일 / 첫 결제일"
                 type="date"
                 fullWidth
                 disabled={disabled}
                 InputLabelProps={{ shrink: true }}
-                inputProps={{ "data-testid": "subscription-next-payment-date-input" }}
-                error={Boolean(errors.nextPaymentDate)}
-                helperText={errors.nextPaymentDate?.message}
-                {...register("nextPaymentDate")}
+                inputProps={{ "data-testid": "subscription-billing-start-date-input" }}
+                error={Boolean(errors.billingStartDate)}
+                helperText={errors.billingStartDate?.message}
+                {...register("billingStartDate")}
               />
             </div>
 

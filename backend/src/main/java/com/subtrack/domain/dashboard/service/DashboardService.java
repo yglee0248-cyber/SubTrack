@@ -4,14 +4,22 @@ import com.subtrack.domain.dashboard.dao.DashboardDao;
 import com.subtrack.domain.dashboard.dto.CategoryExpenseResponse;
 import com.subtrack.domain.dashboard.dto.DashboardSummaryResponse;
 import com.subtrack.domain.dashboard.dto.UpcomingSubscriptionResponse;
+import com.subtrack.domain.dashboard.vo.CategoryExpense;
 import com.subtrack.domain.dashboard.vo.DashboardSummary;
+import com.subtrack.domain.dashboard.vo.DashboardSubscription;
 import com.subtrack.global.exception.BusinessException;
 import com.subtrack.global.exception.ErrorCode;
+import com.subtrack.global.util.BillingDateCalculator;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -35,13 +43,15 @@ public class DashboardService {
         MonthRange monthRange = resolveMonthRange(yearMonthValue);
         LocalDate today = getToday();
 
-        DashboardSummary summary = dashboardDao.findSummary(
+        DashboardSummary summary = new DashboardSummary();
+        summary.setActiveSubscriptionCount(dashboardDao.countActiveSubscriptions(memberId));
+        summary.setMonthlyExpectedAmount(calculateMonthlyExpectedAmount(memberId, monthRange));
+        summary.setUpcomingCount(dashboardDao.countUpcomingSubscriptions(
                 memberId,
-                monthRange.getStartDate(),
-                monthRange.getEndDate(),
                 today,
                 today.plusDays(DEFAULT_UPCOMING_DAYS)
-        );
+        ));
+        summary.setOverdueCount(dashboardDao.countOverdueSubscriptions(memberId, today));
 
         return DashboardSummaryResponse.of(monthRange.getYearMonth(), summary);
     }
@@ -61,10 +71,75 @@ public class DashboardService {
     public List<CategoryExpenseResponse> getCategoryExpenses(Long memberId, String yearMonthValue) {
         MonthRange monthRange = resolveMonthRange(yearMonthValue);
 
-        return dashboardDao.findCategoryExpenses(memberId, monthRange.getStartDate(), monthRange.getEndDate())
+        return calculateCategoryExpenses(memberId, monthRange)
                 .stream()
                 .map(CategoryExpenseResponse::from)
                 .toList();
+    }
+
+    private BigDecimal calculateMonthlyExpectedAmount(Long memberId, MonthRange monthRange) {
+        return findSubscriptionsOccurringInMonth(memberId, monthRange)
+                .stream()
+                .map(DashboardSubscription::getPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private List<CategoryExpense> calculateCategoryExpenses(Long memberId, MonthRange monthRange) {
+        Map<Long, CategoryExpense> groupedExpenses = new LinkedHashMap<>();
+
+        for (DashboardSubscription subscription : findSubscriptionsOccurringInMonth(memberId, monthRange)) {
+            CategoryExpense categoryExpense = groupedExpenses.computeIfAbsent(
+                    subscription.getCategoryId(),
+                    categoryId -> createCategoryExpense(subscription)
+            );
+
+            categoryExpense.setTotalAmount(categoryExpense.getTotalAmount().add(subscription.getPrice()));
+            categoryExpense.setSubscriptionCount(categoryExpense.getSubscriptionCount() + 1);
+        }
+
+        List<CategoryExpense> result = new ArrayList<>(groupedExpenses.values());
+        result.sort(Comparator
+                .comparing(CategoryExpense::getTotalAmount, Comparator.reverseOrder())
+                .thenComparing(CategoryExpense::getCategoryId));
+
+        return result;
+    }
+
+    private CategoryExpense createCategoryExpense(DashboardSubscription subscription) {
+        CategoryExpense categoryExpense = new CategoryExpense();
+        categoryExpense.setCategoryId(subscription.getCategoryId());
+        categoryExpense.setCategoryName(subscription.getCategoryName());
+        categoryExpense.setColorCode(subscription.getColorCode());
+        categoryExpense.setIcon(subscription.getIcon());
+        categoryExpense.setTotalAmount(BigDecimal.ZERO);
+        categoryExpense.setSubscriptionCount(0);
+        return categoryExpense;
+    }
+
+    private List<DashboardSubscription> findSubscriptionsOccurringInMonth(Long memberId, MonthRange monthRange) {
+        return dashboardDao.findRecurringDashboardSubscriptions(
+                        memberId,
+                        monthRange.getStartDate(),
+                        monthRange.getEndDate()
+                )
+                .stream()
+                .filter(subscription -> occursInMonth(subscription, monthRange.getYearMonthValue()))
+                .toList();
+    }
+
+    private boolean occursInMonth(DashboardSubscription subscription, YearMonth yearMonth) {
+        LocalDate occurrenceDate = BillingDateCalculator.calculateOccurrenceDate(
+                subscription.getBillingStartDate(),
+                subscription.getBillingCycle(),
+                yearMonth
+        );
+
+        if (occurrenceDate == null) {
+            return false;
+        }
+
+        return subscription.getDeletedAt() == null
+                || !occurrenceDate.isAfter(subscription.getDeletedAt().toLocalDate());
     }
 
     private MonthRange resolveMonthRange(String yearMonthValue) {
@@ -78,6 +153,7 @@ public class DashboardService {
 
         return new MonthRange(
                 yearMonth.toString(),
+                yearMonth,
                 yearMonth.atDay(1),
                 yearMonth.atEndOfMonth()
         );
@@ -108,17 +184,23 @@ public class DashboardService {
     private static class MonthRange {
 
         private final String yearMonth;
+        private final YearMonth yearMonthValue;
         private final LocalDate startDate;
         private final LocalDate endDate;
 
-        private MonthRange(String yearMonth, LocalDate startDate, LocalDate endDate) {
+        private MonthRange(String yearMonth, YearMonth yearMonthValue, LocalDate startDate, LocalDate endDate) {
             this.yearMonth = yearMonth;
+            this.yearMonthValue = yearMonthValue;
             this.startDate = startDate;
             this.endDate = endDate;
         }
 
         private String getYearMonth() {
             return yearMonth;
+        }
+
+        private YearMonth getYearMonthValue() {
+            return yearMonthValue;
         }
 
         private LocalDate getStartDate() {

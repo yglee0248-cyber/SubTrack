@@ -260,16 +260,17 @@ size=20
       "price": 17000,
       "currency": "KRW",
       "billingCycle": "MONTHLY",
-      "nextPaymentDate": "2026-06-20",
-      "dDay": 5,
-      "paymentStatus": "DUE_SOON",
+      "billingAnchorDay": 25,
+      "billingStartDate": "2025-12-25",
+      "nextPaymentDate": "2026-06-25",
+      "paymentStatus": "DUE_TODAY",
       "paymentMethod": "CARD",
       "status": "ACTIVE"
     }
   ],
   "page": 0,
   "size": 20,
-  "totalElements": 1
+  "totalCount": 1
 }
 ```
 
@@ -290,7 +291,7 @@ size=20
   "price": 17000,
   "currency": "KRW",
   "billingCycle": "MONTHLY",
-  "nextPaymentDate": "2026-06-20",
+  "billingStartDate": "2025-12-25",
   "paymentMethod": "CARD",
   "status": "ACTIVE",
   "memo": "프리미엄 요금제"
@@ -303,12 +304,13 @@ size=20
 {
   "subscriptionId": 1,
   "name": "Netflix",
-  "billingAnchorDay": 20,
-  "nextPaymentDate": "2026-06-20"
+  "billingAnchorDay": 25,
+  "billingStartDate": "2025-12-25",
+  "nextPaymentDate": "2026-06-25"
 }
 ```
 
-서버는 `nextPaymentDate`의 일자를 기준으로 `billingAnchorDay`를 계산합니다.
+서버는 `billingStartDate`의 일자를 기준으로 `billingAnchorDay`를 계산하고, `billingStartDate + billingCycle` 기준으로 현재 날짜에서 가장 가까운 `nextPaymentDate`를 계산합니다.
 
 ---
 
@@ -329,10 +331,10 @@ size=20
   "price": 17000,
   "currency": "KRW",
   "billingCycle": "MONTHLY",
-  "billingAnchorDay": 20,
-  "nextPaymentDate": "2026-06-20",
-  "dDay": 5,
-  "paymentStatus": "DUE_SOON",
+  "billingAnchorDay": 25,
+  "billingStartDate": "2025-12-25",
+  "nextPaymentDate": "2026-06-25",
+  "paymentStatus": "DUE_TODAY",
   "paymentMethod": "CARD",
   "status": "ACTIVE",
   "memo": "프리미엄 요금제"
@@ -364,14 +366,14 @@ size=20
   "price": 17000,
   "currency": "KRW",
   "billingCycle": "MONTHLY",
-  "nextPaymentDate": "2026-06-25",
+  "billingStartDate": "2025-12-25",
   "paymentMethod": "CARD",
   "status": "ACTIVE",
   "memo": "스탠다드 요금제"
 }
 ```
 
-`nextPaymentDate`가 변경되면 `billingAnchorDay`도 새 날짜 기준으로 다시 계산합니다.
+`billingStartDate`가 변경되면 `billingAnchorDay`와 현재 기준 `nextPaymentDate`를 다시 계산합니다.
 
 ---
 
@@ -436,6 +438,8 @@ size=20
 
 월별 대시보드 요약 API입니다.
 
+월간 예상 금액은 `billingStartDate + billingCycle` 반복 규칙으로 선택 월에 발생하는 구독료를 합산합니다.
+
 범위: P0
 
 ### Query
@@ -451,9 +455,8 @@ yearMonth=2026-06
   "yearMonth": "2026-06",
   "activeSubscriptionCount": 5,
   "monthlyExpectedAmount": 54000,
-  "dueSoonCount": 2,
-  "overdueCount": 1,
-  "currency": "KRW"
+  "upcomingCount": 2,
+  "overdueCount": 1
 }
 ```
 
@@ -478,9 +481,10 @@ days=7
   {
     "subscriptionId": 1,
     "name": "Netflix",
+    "categoryId": 1,
+    "categoryName": "OTT",
     "price": 17000,
     "nextPaymentDate": "2026-06-20",
-    "dDay": 5,
     "paymentStatus": "DUE_SOON"
   }
 ]
@@ -491,6 +495,8 @@ days=7
 ## GET /api/dashboard/category-expenses
 
 카테고리별 결제 예정액 API입니다.
+
+카테고리별 금액은 `billingStartDate + billingCycle` 반복 규칙으로 선택 월에 발생하는 구독료를 카테고리별로 합산합니다.
 
 범위: P0
 
@@ -507,12 +513,18 @@ yearMonth=2026-06
   {
     "categoryId": 1,
     "categoryName": "OTT",
-    "amount": 27000
+    "colorCode": "#E53935",
+    "icon": "movie",
+    "totalAmount": 27000,
+    "subscriptionCount": 2
   },
   {
     "categoryId": 2,
     "categoryName": "MUSIC",
-    "amount": 12000
+    "colorCode": "#8E24AA",
+    "icon": "music_note",
+    "totalAmount": 12000,
+    "subscriptionCount": 1
   }
 ]
 ```

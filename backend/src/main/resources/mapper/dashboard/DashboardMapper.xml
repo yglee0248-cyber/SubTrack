@@ -5,13 +5,6 @@
 
 <mapper namespace="com.subtrack.domain.dashboard.dao.DashboardDao">
 
-    <resultMap id="DashboardSummaryResultMap" type="com.subtrack.domain.dashboard.vo.DashboardSummary">
-        <result property="activeSubscriptionCount" column="active_subscription_count" />
-        <result property="monthlyExpectedAmount" column="monthly_expected_amount" />
-        <result property="upcomingCount" column="upcoming_count" />
-        <result property="overdueCount" column="overdue_count" />
-    </resultMap>
-
     <resultMap id="UpcomingSubscriptionResultMap" type="com.subtrack.domain.dashboard.vo.UpcomingSubscription">
         <id property="subscriptionId" column="subscription_id" />
         <result property="name" column="name" />
@@ -22,46 +15,63 @@
         <result property="nextPaymentDate" column="next_payment_date" />
     </resultMap>
 
-    <resultMap id="CategoryExpenseResultMap" type="com.subtrack.domain.dashboard.vo.CategoryExpense">
-        <id property="categoryId" column="category_id" />
+    <resultMap id="DashboardSubscriptionResultMap" type="com.subtrack.domain.dashboard.vo.DashboardSubscription">
+        <id property="subscriptionId" column="subscription_id" />
+        <result property="categoryId" column="category_id" />
         <result property="categoryName" column="category_name" />
         <result property="colorCode" column="color_code" />
         <result property="icon" column="icon" />
-        <result property="totalAmount" column="total_amount" />
-        <result property="subscriptionCount" column="subscription_count" />
+        <result property="price" column="price" />
+        <result property="billingCycle" column="billing_cycle" />
+        <result property="billingAnchorDay" column="billing_anchor_day" />
+        <result property="billingStartDate" column="billing_start_date" />
+        <result property="deletedAt" column="deleted_at" />
     </resultMap>
 
-    <sql id="ActiveSubscriptionCondition">
+    <sql id="CurrentActiveSubscriptionCondition">
         s.member_id = #{memberId}
         AND s.status = 'ACTIVE'
         AND s.deleted_at IS NULL
     </sql>
 
-    <select id="findSummary" resultMap="DashboardSummaryResultMap">
+    <select id="countActiveSubscriptions" resultType="int">
+        SELECT COUNT(*)
+        FROM subscription s
+        WHERE <include refid="CurrentActiveSubscriptionCondition" />
+    </select>
+
+    <select id="countUpcomingSubscriptions" resultType="int">
+        SELECT COUNT(*)
+        FROM subscription s
+        WHERE <include refid="CurrentActiveSubscriptionCondition" />
+          AND s.next_payment_date BETWEEN #{today} AND #{endDate}
+    </select>
+
+    <select id="countOverdueSubscriptions" resultType="int">
+        SELECT COUNT(*)
+        FROM subscription s
+        WHERE <include refid="CurrentActiveSubscriptionCondition" />
+          AND s.next_payment_date &lt; #{today}
+    </select>
+
+    <select id="findRecurringDashboardSubscriptions" resultMap="DashboardSubscriptionResultMap">
         SELECT
-            (
-                SELECT COUNT(*)
-                FROM subscription s
-                WHERE <include refid="ActiveSubscriptionCondition" />
-            ) AS active_subscription_count,
-            COALESCE((
-                SELECT SUM(s.price)
-                FROM subscription s
-                WHERE <include refid="ActiveSubscriptionCondition" />
-                  AND s.next_payment_date BETWEEN #{startDate} AND #{endDate}
-            ), 0.00) AS monthly_expected_amount,
-            (
-                SELECT COUNT(*)
-                FROM subscription s
-                WHERE <include refid="ActiveSubscriptionCondition" />
-                  AND s.next_payment_date BETWEEN #{today} AND #{upcomingEndDate}
-            ) AS upcoming_count,
-            (
-                SELECT COUNT(*)
-                FROM subscription s
-                WHERE <include refid="ActiveSubscriptionCondition" />
-                  AND s.next_payment_date &lt; #{today}
-            ) AS overdue_count
+            s.subscription_id,
+            s.category_id,
+            c.name AS category_name,
+            c.color_code,
+            c.icon,
+            s.price,
+            s.billing_cycle,
+            s.billing_anchor_day,
+            s.billing_start_date,
+            s.deleted_at
+        FROM subscription s
+        INNER JOIN subscription_category c ON s.category_id = c.category_id
+        WHERE s.member_id = #{memberId}
+          AND s.status = 'ACTIVE'
+          AND s.billing_start_date &lt;= #{endDate}
+          AND (s.deleted_at IS NULL OR DATE(s.deleted_at) &gt;= #{startDate})
     </select>
 
     <select id="findUpcomingSubscriptions" resultMap="UpcomingSubscriptionResultMap">
@@ -75,25 +85,9 @@
             s.next_payment_date
         FROM subscription s
         INNER JOIN subscription_category c ON s.category_id = c.category_id
-        WHERE <include refid="ActiveSubscriptionCondition" />
+        WHERE <include refid="CurrentActiveSubscriptionCondition" />
           AND s.next_payment_date BETWEEN #{today} AND #{endDate}
         ORDER BY s.next_payment_date ASC, s.subscription_id DESC
-    </select>
-
-    <select id="findCategoryExpenses" resultMap="CategoryExpenseResultMap">
-        SELECT
-            c.category_id,
-            c.name AS category_name,
-            c.color_code,
-            c.icon,
-            COALESCE(SUM(s.price), 0.00) AS total_amount,
-            COUNT(*) AS subscription_count
-        FROM subscription s
-        INNER JOIN subscription_category c ON s.category_id = c.category_id
-        WHERE <include refid="ActiveSubscriptionCondition" />
-          AND s.next_payment_date BETWEEN #{startDate} AND #{endDate}
-        GROUP BY c.category_id, c.name, c.color_code, c.icon
-        ORDER BY total_amount DESC, c.category_id ASC
     </select>
 
 </mapper>

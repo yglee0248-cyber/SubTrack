@@ -40,6 +40,7 @@ CREATE TABLE subscription (
     currency CHAR(3) NOT NULL DEFAULT 'KRW',
     billing_cycle VARCHAR(20) NOT NULL,
     billing_anchor_day TINYINT UNSIGNED NOT NULL,
+    billing_start_date DATE NOT NULL COMMENT '구독 시작일 또는 첫 결제일',
     next_payment_date DATE NOT NULL,
     payment_method VARCHAR(30) NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
@@ -59,6 +60,7 @@ CREATE TABLE subscription (
     CONSTRAINT chk_subscription_billing_anchor_day
         CHECK (billing_anchor_day BETWEEN 1 AND 31),
     KEY idx_subscription_member_deleted_next_payment (member_id, deleted_at, next_payment_date),
+    KEY idx_subscription_member_billing_start (member_id, billing_start_date),
     KEY idx_subscription_member_status_deleted (member_id, status, deleted_at),
     KEY idx_subscription_member_category (member_id, category_id),
     KEY idx_subscription_member_name (member_id, name)

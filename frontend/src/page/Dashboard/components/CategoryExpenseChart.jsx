@@ -42,7 +42,7 @@ export function CategoryExpenseChart({ items, loading, yearMonth }) {
     return (
       <DashboardEmptyState
         title={`${formatYearMonthLabel(yearMonth)} 예상 지출이 없습니다.`}
-        description="활성 구독의 다음 결제일이 선택한 월에 들어오면 차트가 표시됩니다."
+        description="구독 시작일과 결제 주기를 기준으로 선택한 월에 발생하는 구독료가 표시됩니다."
       />
     );
   }

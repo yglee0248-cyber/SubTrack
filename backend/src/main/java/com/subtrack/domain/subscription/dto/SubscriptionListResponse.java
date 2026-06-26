@@ -53,6 +53,7 @@ public class SubscriptionListResponse {
         private final BigDecimal price;
         private final String currency;
         private final String billingCycle;
+        private final LocalDate billingStartDate;
         private final Integer billingAnchorDay;
         private final LocalDate nextPaymentDate;
         private final String paymentMethod;
@@ -67,6 +68,7 @@ public class SubscriptionListResponse {
                 BigDecimal price,
                 String currency,
                 String billingCycle,
+                LocalDate billingStartDate,
                 Integer billingAnchorDay,
                 LocalDate nextPaymentDate,
                 String paymentMethod,
@@ -80,6 +82,7 @@ public class SubscriptionListResponse {
             this.price = price;
             this.currency = currency;
             this.billingCycle = billingCycle;
+            this.billingStartDate = billingStartDate;
             this.billingAnchorDay = billingAnchorDay;
             this.nextPaymentDate = nextPaymentDate;
             this.paymentMethod = paymentMethod;
@@ -96,6 +99,7 @@ public class SubscriptionListResponse {
                     subscription.getPrice(),
                     subscription.getCurrency(),
                     subscription.getBillingCycle(),
+                    subscription.getBillingStartDate(),
                     subscription.getBillingAnchorDay(),
                     subscription.getNextPaymentDate(),
                     subscription.getPaymentMethod(),
@@ -130,6 +134,10 @@ public class SubscriptionListResponse {
 
         public String getBillingCycle() {
             return billingCycle;
+        }
+
+        public LocalDate getBillingStartDate() {
+            return billingStartDate;
         }
 
         public Integer getBillingAnchorDay() {

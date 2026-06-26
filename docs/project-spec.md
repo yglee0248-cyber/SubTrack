@@ -141,7 +141,7 @@ P1은 2주차 목표입니다.
 
 MVP에서는 별도 “말일 결제” 체크박스를 두지 않습니다.
 
-사용자가 입력한 `next_payment_date`의 일자를 기본값으로 사용합니다.
+사용자가 입력한 `billing_start_date`의 일자를 기본값으로 사용합니다.
 
 예시 1:
 
@@ -169,11 +169,17 @@ billing_anchor_day = 28
 
 ## 5-2. 다음 결제일 계산 정책
 
-월간 구독은 기존 `next_payment_date`의 월을 1개월 증가시킵니다.
+`billing_start_date`는 사용자가 입력하는 구독 시작일 또는 첫 결제일입니다.
 
-연간 구독은 기존 `next_payment_date`의 연도를 1년 증가시킵니다.
+`next_payment_date`는 사용자가 직접 입력하지 않고, 서버가 `billing_start_date`와 `billing_cycle`을 기준으로 현재 날짜에서 가장 가까운 다음 결제 예정일을 계산해 저장합니다.
 
-중요한 점은 `paid_date`가 아니라 기존 `next_payment_date`를 기준으로 다음 결제일을 계산한다는 것입니다.
+월간 구독은 `billing_start_date`의 일자를 anchor day로 사용해 매월 반복됩니다.
+
+연간 구독은 `billing_start_date`와 같은 월에 매년 반복됩니다.
+
+Dashboard 월간 구독료 합계는 `next_payment_date`가 아니라 `billing_start_date + billing_cycle` 반복 규칙으로 계산합니다.
+
+중요한 점은 P1 결제 완료 이후에도 `paid_date`가 아니라 기존 결제 주기를 기준으로 다음 결제일을 계산한다는 것입니다.
 
 이유는 사용자가 늦게 결제 완료를 눌러도 원래 결제 주기가 밀리지 않도록 하기 위해서입니다.
 

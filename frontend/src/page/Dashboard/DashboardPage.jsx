@@ -80,10 +80,10 @@ function DashboardPage() {
             안녕하세요, {nickname}님
           </Typography>
           <Typography variant="body1" className={styles.description}>
-            이번 달 구독 결제 현황을 확인하세요.
+            선택한 월의 구독료 흐름을 확인하세요.
           </Typography>
           <Typography variant="body2" className={styles.monthCaption}>
-            {formatYearMonthLabel(yearMonth)} 기준 예상 결제 데이터입니다.
+            구독 시작일과 결제 주기를 기준으로 계산한 예상 데이터입니다.
           </Typography>
         </div>
 
@@ -119,9 +119,9 @@ function DashboardPage() {
           loading={summaryQuery.isLoading}
         />
         <SummaryCard
-          label="이번 달 예상 결제"
+          label="월간 구독료 합계"
           value={formatDashboardAmount(summary.monthlyExpectedAmount)}
-          helper={`${formatYearMonthLabel(summary.yearMonth || yearMonth)} 합계`}
+          helper={`${formatYearMonthLabel(summary.yearMonth || yearMonth)} 구독료 합계`}
           tone="green"
           loading={summaryQuery.isLoading}
         />
@@ -166,7 +166,7 @@ function DashboardPage() {
                 카테고리별 예상 지출
               </Typography>
               <Typography variant="body2" className={styles.sectionDescription}>
-                {formatYearMonthLabel(yearMonth)}에 결제 예정인 활성 구독 기준입니다.
+                구독 시작일과 결제 주기를 기준으로 계산합니다.
               </Typography>
             </div>
             {categoryExpensesQuery.isFetching && !categoryExpensesQuery.isLoading && (

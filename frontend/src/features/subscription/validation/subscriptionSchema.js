@@ -18,7 +18,7 @@ export const subscriptionSchema = yup.object({
   price: yup
     .number()
     .transform(emptyStringToUndefined)
-    .typeError("금액을 숫자로 입력해주세요.")
+    .typeError("금액은 숫자로 입력해주세요.")
     .required("금액을 입력해주세요.")
     .min(0, "금액은 0 이상이어야 합니다."),
   currency: yup
@@ -31,7 +31,7 @@ export const subscriptionSchema = yup.object({
     .string()
     .oneOf(["MONTHLY", "YEARLY"], "결제 주기를 선택해주세요.")
     .required("결제 주기를 선택해주세요."),
-  nextPaymentDate: yup.string().required("다음 결제일을 선택해주세요."),
+  billingStartDate: yup.string().required("구독 시작일 또는 첫 결제일을 선택해주세요."),
   paymentMethod: yup
     .string()
     .trim()

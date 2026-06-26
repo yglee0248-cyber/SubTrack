@@ -15,6 +15,7 @@ public class Subscription {
     private String currency;
     private String billingCycle;
     private Integer billingAnchorDay;
+    private LocalDate billingStartDate;
     private LocalDate nextPaymentDate;
     private String paymentMethod;
     private String status;
@@ -93,6 +94,14 @@ public class Subscription {
 
     public void setBillingAnchorDay(Integer billingAnchorDay) {
         this.billingAnchorDay = billingAnchorDay;
+    }
+
+    public LocalDate getBillingStartDate() {
+        return billingStartDate;
+    }
+
+    public void setBillingStartDate(LocalDate billingStartDate) {
+        this.billingStartDate = billingStartDate;
     }
 
     public LocalDate getNextPaymentDate() {

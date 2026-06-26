@@ -416,7 +416,7 @@ features/member/validation/memberSchema.js
 | categoryId | 필수 |
 | price | 필수, 0 이상 |
 | billingCycle | MONTHLY 또는 YEARLY |
-| nextPaymentDate | 필수 날짜 |
+| billingStartDate | 필수 날짜, 구독 시작일 또는 첫 결제일 |
 | paymentMethod | 필수 |
 | status | ACTIVE, PAUSED, CANCELED |
 | memo | 500자 이하 |

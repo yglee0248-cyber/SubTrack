@@ -13,7 +13,10 @@ import com.subtrack.domain.subscription.dto.SubscriptionUpdateResponse;
 import com.subtrack.domain.subscription.vo.Subscription;
 import com.subtrack.global.exception.BusinessException;
 import com.subtrack.global.exception.ErrorCode;
+import com.subtrack.global.util.BillingDateCalculator;
 import com.subtrack.global.util.PaymentStatusCalculator;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Locale;
 import java.util.Set;
 import org.springframework.stereotype.Service;
@@ -28,6 +31,7 @@ public class SubscriptionService {
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 10;
     private static final int MAX_SIZE = 100;
+    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
     private static final Set<String> SUBSCRIPTION_STATUSES = Set.of("ACTIVE", "PAUSED", "CANCELED");
 
     private final SubscriptionDao subscriptionDao;
@@ -155,8 +159,7 @@ public class SubscriptionService {
         subscription.setPrice(request.getPrice());
         subscription.setCurrency(resolveCurrency(request.getCurrency()));
         subscription.setBillingCycle(request.getBillingCycle());
-        subscription.setBillingAnchorDay(request.getNextPaymentDate().getDayOfMonth());
-        subscription.setNextPaymentDate(request.getNextPaymentDate());
+        applyBillingDates(subscription, request.getBillingStartDate(), request.getBillingCycle());
         subscription.setPaymentMethod(request.getPaymentMethod());
         subscription.setMemo(request.getMemo());
         subscription.setStatus(resolveStatus(request.getStatus()));
@@ -168,11 +171,20 @@ public class SubscriptionService {
         subscription.setPrice(request.getPrice());
         subscription.setCurrency(resolveCurrency(request.getCurrency()));
         subscription.setBillingCycle(request.getBillingCycle());
-        subscription.setBillingAnchorDay(request.getNextPaymentDate().getDayOfMonth());
-        subscription.setNextPaymentDate(request.getNextPaymentDate());
+        applyBillingDates(subscription, request.getBillingStartDate(), request.getBillingCycle());
         subscription.setPaymentMethod(request.getPaymentMethod());
         subscription.setMemo(request.getMemo());
         subscription.setStatus(resolveStatus(request.getStatus()));
+    }
+
+    private void applyBillingDates(Subscription subscription, LocalDate billingStartDate, String billingCycle) {
+        subscription.setBillingStartDate(billingStartDate);
+        subscription.setBillingAnchorDay(billingStartDate.getDayOfMonth());
+        subscription.setNextPaymentDate(BillingDateCalculator.calculateNextPaymentDate(
+                billingStartDate,
+                billingCycle,
+                LocalDate.now(SERVICE_ZONE)
+        ));
     }
 
     private Subscription findOwnedSubscription(Long memberId, Long subscriptionId) {

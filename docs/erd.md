@@ -106,6 +106,7 @@ MVP에서는 사용자별 커스텀 카테고리를 만들지 않고, 모든 사
 | currency | 통화 |
 | billing_cycle | MONTHLY, YEARLY |
 | billing_anchor_day | 반복 결제 기준일 |
+| billing_start_date | 구독 시작일 또는 첫 결제일 |
 | next_payment_date | 다음 결제 예정일 |
 | payment_method | 결제수단 |
 | status | ACTIVE, PAUSED, CANCELED |
@@ -122,6 +123,7 @@ MVP에서는 사용자별 커스텀 카테고리를 만들지 않고, 모든 사
 | FK | member_id -> member.member_id |
 | FK | category_id -> subscription_category.category_id |
 | INDEX | member_id, deleted_at, next_payment_date |
+| INDEX | member_id, billing_start_date |
 | INDEX | member_id, status, deleted_at |
 | INDEX | member_id, category_id |
 | INDEX | member_id, name |
