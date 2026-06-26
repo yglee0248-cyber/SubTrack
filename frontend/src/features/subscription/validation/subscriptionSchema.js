@@ -51,20 +51,29 @@ export const subscriptionSchema = yup.object({
     .string()
     .oneOf(["ACTIVE", "PAUSED", "CANCELED"], "구독 상태를 선택해주세요.")
     .required("구독 상태를 선택해주세요."),
+  statusEffectiveDateRequired: yup.boolean().default(false),
   statusEffectiveDate: yup
     .string()
     .nullable()
-    .when("status", {
-      is: isInactiveStatus,
-      then: (schema) =>
-        schema
-          .required("상태 적용일을 선택해주세요.")
-          .test("not-before-billing-start", "상태 적용일은 구독 시작일보다 이전일 수 없습니다.", function (value) {
-            return !isDateBefore(value, this.parent.billingStartDate);
-          })
-          .test("not-future", "미래 날짜의 상태 변경 예약은 아직 지원하지 않습니다.", (value) => {
-            return value <= dayjs().format("YYYY-MM-DD");
-          }),
-      otherwise: (schema) => schema.notRequired(),
+    .test("required-when-status-changes", "상태 적용일을 선택해주세요.", function (value) {
+      if (!isInactiveStatus(this.parent.status) || !this.parent.statusEffectiveDateRequired) {
+        return true;
+      }
+
+      return Boolean(value);
+    })
+    .test("not-before-billing-start", "상태 적용일은 구독 시작일보다 이전일 수 없습니다.", function (value) {
+      if (!isInactiveStatus(this.parent.status) || !value) {
+        return true;
+      }
+
+      return !isDateBefore(value, this.parent.billingStartDate);
+    })
+    .test("not-future", "미래 날짜의 상태 변경 예약은 아직 지원하지 않습니다.", function (value) {
+      if (!isInactiveStatus(this.parent.status) || !value) {
+        return true;
+      }
+
+      return value <= dayjs().format("YYYY-MM-DD");
     }),
 });

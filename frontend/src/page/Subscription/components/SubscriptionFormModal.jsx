@@ -19,22 +19,33 @@ import {
 import { subscriptionSchema } from "../../../features/subscription/validation/subscriptionSchema";
 import styles from "../SubscriptionListPage.module.css";
 
-const DEFAULT_FORM_VALUES = {
-  categoryId: "",
-  name: "",
-  price: "",
-  currency: "KRW",
-  billingCycle: "MONTHLY",
-  billingStartDate: dayjs().format("YYYY-MM-DD"),
-  statusEffectiveDate: dayjs().format("YYYY-MM-DD"),
-  paymentMethod: "",
-  memo: "",
-  status: "ACTIVE",
-};
+function getTodayDate() {
+  return dayjs().format("YYYY-MM-DD");
+}
+
+function isInactiveStatus(status) {
+  return status === "PAUSED" || status === "CANCELED";
+}
+
+function getDefaultFormValues() {
+  return {
+    categoryId: "",
+    name: "",
+    price: "",
+    currency: "KRW",
+    billingCycle: "MONTHLY",
+    billingStartDate: getTodayDate(),
+    statusEffectiveDate: "",
+    statusEffectiveDateRequired: false,
+    paymentMethod: "",
+    memo: "",
+    status: "ACTIVE",
+  };
+}
 
 function toFormValues(subscription) {
   if (!subscription) {
-    return DEFAULT_FORM_VALUES;
+    return getDefaultFormValues();
   }
 
   return {
@@ -43,8 +54,9 @@ function toFormValues(subscription) {
     price: subscription.price ?? "",
     currency: subscription.currency || "KRW",
     billingCycle: subscription.billingCycle || "MONTHLY",
-    billingStartDate: subscription.billingStartDate || subscription.nextPaymentDate || dayjs().format("YYYY-MM-DD"),
-    statusEffectiveDate: dayjs().format("YYYY-MM-DD"),
+    billingStartDate: subscription.billingStartDate || subscription.nextPaymentDate || getTodayDate(),
+    statusEffectiveDate: subscription.statusEffectiveDate || "",
+    statusEffectiveDateRequired: false,
     paymentMethod: subscription.paymentMethod || "",
     memo: subscription.memo || "",
     status: subscription.status || "ACTIVE",
@@ -66,11 +78,13 @@ export function SubscriptionFormModal({
     register,
     handleSubmit,
     reset,
+    setValue,
+    clearErrors,
     watch,
     formState: { errors },
   } = useForm({
     resolver: yupResolver(subscriptionSchema),
-    defaultValues: DEFAULT_FORM_VALUES,
+    defaultValues: getDefaultFormValues(),
   });
 
   useEffect(() => {
@@ -81,6 +95,54 @@ export function SubscriptionFormModal({
 
   const selectedStatus = watch("status") || "ACTIVE";
   const shouldShowStatusEffectiveDate = selectedStatus !== "ACTIVE";
+  const originalStatus = mode === "edit" ? initialValues?.status || "" : "";
+  const isEditMode = mode === "edit";
+  const isStatusChanged = isEditMode && selectedStatus !== originalStatus;
+  const isKeepingExistingInactiveStatus =
+    isEditMode && isInactiveStatus(selectedStatus) && selectedStatus === originalStatus;
+  const shouldRequireStatusEffectiveDate =
+    isInactiveStatus(selectedStatus) && (!isEditMode || isStatusChanged);
+  const isStatusEffectiveDateReadOnly = isKeepingExistingInactiveStatus;
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setValue("statusEffectiveDateRequired", shouldRequireStatusEffectiveDate, {
+      shouldDirty: false,
+      shouldValidate: false,
+    });
+
+    if (selectedStatus === "ACTIVE") {
+      setValue("statusEffectiveDate", "", { shouldDirty: false, shouldValidate: false });
+      clearErrors("statusEffectiveDate");
+      return;
+    }
+
+    if (isKeepingExistingInactiveStatus) {
+      setValue("statusEffectiveDate", initialValues?.statusEffectiveDate || "", {
+        shouldDirty: false,
+        shouldValidate: false,
+      });
+      clearErrors("statusEffectiveDate");
+      return;
+    }
+
+    setValue("statusEffectiveDate", getTodayDate(), {
+      shouldDirty: false,
+      shouldValidate: false,
+    });
+    clearErrors("statusEffectiveDate");
+  }, [
+    clearErrors,
+    initialValues?.statusEffectiveDate,
+    isKeepingExistingInactiveStatus,
+    open,
+    selectedStatus,
+    setValue,
+    shouldRequireStatusEffectiveDate,
+  ]);
 
   const submitForm = (values) => {
     const payload = {
@@ -95,7 +157,10 @@ export function SubscriptionFormModal({
       status: values.status,
     };
 
-    if (values.status !== "ACTIVE" && values.statusEffectiveDate) {
+    const shouldSendStatusEffectiveDate =
+      isInactiveStatus(values.status) && (!isEditMode || values.status !== originalStatus);
+
+    if (shouldSendStatusEffectiveDate && values.statusEffectiveDate) {
       payload.statusEffectiveDate = values.statusEffectiveDate;
     }
 
@@ -105,6 +170,9 @@ export function SubscriptionFormModal({
   const title = mode === "edit" ? "구독 수정" : "구독 추가";
   const disabled = isSubmitting || isInitialLoading;
   const statusEffectiveDateLabel = selectedStatus === "CANCELED" ? "해지일" : "일시정지 시작일";
+  const statusEffectiveDateHelperText = isStatusEffectiveDateReadOnly
+    ? "기존 상태 시작일입니다. 상태를 변경할 때만 새 적용일을 입력합니다."
+    : "상태 적용일부터 선택 월 대시보드 계산에 반영됩니다.";
 
   return (
     <Dialog
@@ -257,12 +325,13 @@ export function SubscriptionFormModal({
                 type="date"
                 fullWidth
                 disabled={disabled}
+                InputProps={{ readOnly: isStatusEffectiveDateReadOnly }}
                 InputLabelProps={{ shrink: true }}
                 inputProps={{ "data-testid": "subscription-status-effective-date-input" }}
                 error={Boolean(errors.statusEffectiveDate)}
                 helperText={
                   errors.statusEffectiveDate?.message ||
-                  "상태 적용일부터 선택 월 대시보드 계산에 반영됩니다."
+                  statusEffectiveDateHelperText
                 }
                 {...register("statusEffectiveDate")}
               />
