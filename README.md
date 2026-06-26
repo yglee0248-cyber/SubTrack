@@ -122,7 +122,10 @@ SubTrack/
  │   └─ setup-plan.md
  ├─ database/
  │   ├─ 01_schema.sql
- │   └─ 02_seed_category.sql
+ │   ├─ 02_seed_category.sql
+ │   ├─ 03_add_billing_start_date.sql
+ │   ├─ 04_add_subscription_status_history.sql
+ │   └─ 05_update_category_names_ko.sql
  ├─ backend/
  └─ frontend/
 ```
@@ -138,7 +141,10 @@ SubTrack/
 ```txt
 database/
  ├─ 01_schema.sql
- └─ 02_seed_category.sql
+ ├─ 02_seed_category.sql
+ ├─ 03_add_billing_start_date.sql
+ ├─ 04_add_subscription_status_history.sql
+ └─ 05_update_category_names_ko.sql
 ```
 
 배포 또는 시연 단계에서는 외부 MySQL 호스팅이나 AWS RDS MySQL로 datasource 설정만 변경할 수 있도록 구성합니다.
@@ -177,7 +183,15 @@ DUE_TODAY  : 오늘
 
 MVP에서는 실제 결제 완료 여부를 추적하지 않으므로 미납 상태를 판단하지 않습니다.
 
-### 3. 결제 완료 중복 방지
+### 3. 금액과 카테고리
+
+MVP는 KRW 중심으로 사용하며 다중 통화 환율 변환은 구현하지 않습니다.
+
+구독 금액은 0 이상의 정수 금액을 허용합니다.
+
+기본 카테고리는 사용자 화면에서 `영상`, `음악`, `클라우드`, `생산성`, `인공지능 도구`, `쇼핑`, `교육`, `금융`, `생활`, `기타`처럼 한글 표시명을 사용합니다.
+
+### 4. 결제 완료 중복 방지
 
 결제 완료 API는 중복 클릭 또는 네트워크 재요청에 대비해야 합니다.
 

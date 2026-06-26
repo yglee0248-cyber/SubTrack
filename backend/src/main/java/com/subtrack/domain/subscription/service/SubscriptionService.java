@@ -19,6 +19,7 @@ import com.subtrack.global.util.BillingDateCalculator;
 import com.subtrack.global.util.PaymentStatusCalculator;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import org.springframework.stereotype.Service;
@@ -128,6 +129,8 @@ public class SubscriptionService {
 
         if (!nextStatus.equals(existingSubscription.getStatus())) {
             changeStatusHistory(existingSubscription, request, nextStatus);
+        } else {
+            updateInactiveStatusEffectiveDateIfNeeded(existingSubscription, request, nextStatus);
         }
 
         return new SubscriptionUpdateResponse(subscriptionId);
@@ -264,6 +267,76 @@ public class SubscriptionService {
 
         statusHistoryDao.closeOpenHistory(existingSubscription.getSubscriptionId(), effectiveDate.minusDays(1));
         insertStatusHistory(existingSubscription.getSubscriptionId(), nextStatus, effectiveDate, null);
+    }
+
+    private void updateInactiveStatusEffectiveDateIfNeeded(
+            Subscription existingSubscription,
+            SubscriptionUpdateRequest request,
+            String nextStatus
+    ) {
+        if (ACTIVE_STATUS.equals(nextStatus)) {
+            return;
+        }
+
+        LocalDate effectiveDate = resolveInactiveStatusEffectiveDate(
+                request.getBillingStartDate(),
+                request.getStatusEffectiveDate()
+        );
+        SubscriptionStatusHistory openHistory = statusHistoryDao.findOpenHistoryBySubscriptionId(
+                existingSubscription.getSubscriptionId()
+        );
+
+        if (openHistory == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "현재 상태 이력을 찾을 수 없습니다.");
+        }
+
+        if (!nextStatus.equals(openHistory.getStatus())) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "현재 상태 이력과 요청 상태가 일치하지 않습니다.");
+        }
+
+        if (effectiveDate.equals(openHistory.getEffectiveStartDate())) {
+            return;
+        }
+
+        SubscriptionStatusHistory previousHistory = findPreviousHistory(
+                existingSubscription.getSubscriptionId(),
+                openHistory.getStatusHistoryId()
+        );
+
+        if (previousHistory != null) {
+            LocalDate previousEndDate = effectiveDate.minusDays(1);
+            if (previousEndDate.isBefore(previousHistory.getEffectiveStartDate())) {
+                throw new BusinessException(
+                        ErrorCode.VALIDATION_ERROR,
+                        "상태 적용일이 이전 상태 이력 시작일과 충돌합니다."
+                );
+            }
+
+            statusHistoryDao.updateHistoryEndDate(
+                    previousHistory.getStatusHistoryId(),
+                    previousEndDate
+            );
+        }
+
+        int updatedCount = statusHistoryDao.updateHistoryStartDate(openHistory.getStatusHistoryId(), effectiveDate);
+        if (updatedCount == 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "상태 적용일을 수정하지 못했습니다.");
+        }
+    }
+
+    private SubscriptionStatusHistory findPreviousHistory(Long subscriptionId, Long openStatusHistoryId) {
+        List<SubscriptionStatusHistory> histories = statusHistoryDao.findHistoriesBySubscriptionId(subscriptionId);
+        SubscriptionStatusHistory previousHistory = null;
+
+        for (SubscriptionStatusHistory history : histories) {
+            if (history.getStatusHistoryId().equals(openStatusHistoryId)) {
+                return previousHistory;
+            }
+
+            previousHistory = history;
+        }
+
+        return previousHistory;
     }
 
     private LocalDate resolveStatusChangeEffectiveDate(

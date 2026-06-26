@@ -220,7 +220,7 @@ MVP에서는 서버에서 토큰 블랙리스트를 관리하지 않습니다.
 [
   {
     "categoryId": 1,
-    "name": "OTT",
+    "name": "영상",
     "colorCode": "#E53935",
     "icon": "movie"
   }
@@ -256,7 +256,7 @@ size=20
     {
       "subscriptionId": 1,
       "name": "Netflix",
-      "categoryName": "OTT",
+      "categoryName": "영상",
       "price": 17000,
       "currency": "KRW",
       "billingCycle": "MONTHLY",
@@ -300,6 +300,8 @@ size=20
 ```
 
 `billingStartDate`는 과거, 오늘, 미래 날짜를 모두 허용합니다. 앞으로 시작될 구독을 미리 등록할 수 있습니다.
+
+`price`는 0 이상의 정수 금액을 허용합니다. MVP는 KRW 중심으로 사용하며 다중 통화 환율 변환은 구현하지 않습니다.
 
 `status`가 `PAUSED` 또는 `CANCELED`인 상태로 등록하는 경우 `statusEffectiveDate`는 필수입니다. `statusEffectiveDate`는 `billingStartDate`보다 이전일 수 없고, MVP에서는 미래 날짜를 허용하지 않습니다.
 
@@ -348,7 +350,7 @@ size=20
 {
   "subscriptionId": 1,
   "categoryId": 1,
-  "categoryName": "OTT",
+  "categoryName": "영상",
   "name": "Netflix",
   "price": 17000,
   "currency": "KRW",
@@ -396,7 +398,7 @@ size=20
 }
 ```
 
-`billingStartDate`가 변경되면 `billingAnchorDay`와 현재 기준 `nextPaymentDate`를 다시 계산합니다. `billingStartDate`는 미래 날짜도 허용합니다. `status`가 `PAUSED` 또는 `CANCELED`로 변경되는 경우 `statusEffectiveDate`는 필수이며, 서버는 기존 열린 상태 이력을 종료하고 새 상태 이력을 생성합니다.
+`billingStartDate`가 변경되면 `billingAnchorDay`와 현재 기준 `nextPaymentDate`를 다시 계산합니다. `billingStartDate`는 미래 날짜도 허용합니다. `status`가 `PAUSED` 또는 `CANCELED`로 변경되는 경우 `statusEffectiveDate`는 필수이며, 서버는 기존 열린 상태 이력을 종료하고 새 상태 이력을 생성합니다. 이미 `PAUSED` 또는 `CANCELED` 상태인 구독의 `statusEffectiveDate`를 수정하면 현재 열린 상태 이력의 시작일과 직전 ACTIVE 이력 종료일을 함께 보정합니다.
 
 ---
 
@@ -516,7 +518,7 @@ days=7
     "subscriptionId": 1,
     "name": "Netflix",
     "categoryId": 1,
-    "categoryName": "OTT",
+    "categoryName": "영상",
     "price": 17000,
     "nextPaymentDate": "2026-06-20",
     "paymentStatus": "DUE_SOON"
@@ -546,7 +548,7 @@ yearMonth=2026-06
 [
   {
     "categoryId": 1,
-    "categoryName": "OTT",
+    "categoryName": "영상",
     "colorCode": "#E53935",
     "icon": "movie",
     "totalAmount": 27000,
@@ -554,7 +556,7 @@ yearMonth=2026-06
   },
   {
     "categoryId": 2,
-    "categoryName": "MUSIC",
+    "categoryName": "음악",
     "colorCode": "#8E24AA",
     "icon": "music_note",
     "totalAmount": 12000,

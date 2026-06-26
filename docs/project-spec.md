@@ -201,6 +201,8 @@ Dashboard 월간 구독료 합계는 `next_payment_date`가 아니라 `billing_s
 
 `status_effective_date`는 PAUSED 또는 CANCELED 상태가 적용되는 날짜입니다. ACTIVE 상태에서는 사용하지 않습니다. MVP에서는 미래 예약 상태 변경을 허용하지 않으며, `billing_start_date`보다 이전일 수 없습니다.
 
+PAUSED 또는 CANCELED 상태를 유지한 채 수정하는 경우 `status_effective_date`를 변경할 수 있습니다. 이때 현재 열린 상태 이력의 시작일과 직전 ACTIVE 이력의 종료일을 함께 보정합니다.
+
 상태 의미:
 
 | 상태 | 의미 |
@@ -212,6 +214,10 @@ Dashboard 월간 구독료 합계는 `next_payment_date`가 아니라 `billing_s
 예를 들어 2025-12-25에 시작한 월간 구독이 2026-06-10에 CANCELED가 되면, 2026-05까지의 과거 ACTIVE 월 통계는 유지하고 2026-06-25 이후 발생분은 제외합니다.
 
 가격 변경 이력은 MVP에서 구현하지 않습니다. 따라서 과거 월 예상 구독료도 현재 `subscription.price`를 기준으로 계산합니다. 실제 가격 정확도는 P1 이후 `payment_history` 또는 별도 price history가 필요합니다.
+
+MVP는 KRW 중심으로 사용하며 다중 통화 환율 변환은 구현하지 않습니다. `price`는 0 이상의 정수 금액을 허용합니다.
+
+기본 카테고리 표시명은 사용자 화면에서 한글을 사용합니다. 기본값은 `영상`, `음악`, `클라우드`, `생산성`, `인공지능 도구`, `쇼핑`, `교육`, `금융`, `생활`, `기타`입니다.
 
 ---
 

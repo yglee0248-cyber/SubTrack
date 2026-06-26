@@ -92,4 +92,16 @@
           AND effective_end_date IS NULL
     </update>
 
+    <update id="updateHistoryStartDate">
+        UPDATE subscription_status_history
+        SET effective_start_date = #{effectiveStartDate}
+        WHERE status_history_id = #{statusHistoryId}
+    </update>
+
+    <update id="updateHistoryEndDate">
+        UPDATE subscription_status_history
+        SET effective_end_date = #{effectiveEndDate}
+        WHERE status_history_id = #{statusHistoryId}
+    </update>
+
 </mapper>

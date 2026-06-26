@@ -29,7 +29,8 @@ export const subscriptionSchema = yup.object({
     .transform(emptyStringToUndefined)
     .typeError("금액은 숫자로 입력해주세요.")
     .required("금액을 입력해주세요.")
-    .min(0, "금액은 0 이상이어야 합니다."),
+    .min(0, "금액은 0 이상이어야 합니다.")
+    .integer("금액은 1원 단위 정수로 입력해주세요."),
   currency: yup
     .string()
     .trim()
@@ -51,12 +52,11 @@ export const subscriptionSchema = yup.object({
     .string()
     .oneOf(["ACTIVE", "PAUSED", "CANCELED"], "구독 상태를 선택해주세요.")
     .required("구독 상태를 선택해주세요."),
-  statusEffectiveDateRequired: yup.boolean().default(false),
   statusEffectiveDate: yup
     .string()
     .nullable()
-    .test("required-when-status-changes", "상태 적용일을 선택해주세요.", function (value) {
-      if (!isInactiveStatus(this.parent.status) || !this.parent.statusEffectiveDateRequired) {
+    .test("required-when-inactive", "상태 적용일을 선택해주세요.", function (value) {
+      if (!isInactiveStatus(this.parent.status)) {
         return true;
       }
 

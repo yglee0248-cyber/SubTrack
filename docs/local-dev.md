@@ -13,7 +13,7 @@ Copy-Item .env.example .env
 Default local values:
 
 ```env
-DB_URL=jdbc:mysql://localhost:3307/subtrack?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+DB_URL=jdbc:mysql://localhost:3307/subtrack?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&characterSetResults=utf8mb4
 DB_USERNAME=root
 DB_PASSWORD=password
 JWT_SECRET=local-development-secret-key-change-later
@@ -24,6 +24,8 @@ CORS_ALLOWED_ORIGINS=http://localhost:5173
 ```
 
 Spring Boot also has the same local defaults in `backend/src/main/resources/application.yml`, so the backend can run locally without creating a real `.env` file.
+
+If you already created `.env` before the UTF-8 JDBC URL change, update its `DB_URL` to match the value above. Environment variables override the default in `application.yml`.
 
 ## 2. Start Docker MySQL
 

@@ -107,7 +107,7 @@ PushLogDao
 ```yaml
 spring:
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/subtrack?serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
+    url: ${DB_URL:jdbc:mysql://localhost:3307/subtrack?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&characterSetResults=utf8mb4}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:password}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -416,10 +416,10 @@ features/member/validation/memberSchema.js
 |---|---|
 | name | 필수, 1~100자 |
 | categoryId | 필수 |
-| price | 필수, 0 이상 |
+| price | 필수, 0 이상의 정수 |
 | billingCycle | MONTHLY 또는 YEARLY |
 | billingStartDate | 필수 날짜, 구독 시작일 또는 첫 결제일, 미래 날짜 허용 |
-| statusEffectiveDate | PAUSED/CANCELED일 때 필수, billingStartDate 이상 오늘 이하 |
+| statusEffectiveDate | PAUSED/CANCELED일 때 필수, billingStartDate 이상 오늘 이하, 상태 유지 수정 시 변경 가능 |
 | paymentMethod | 필수 |
 | status | ACTIVE, PAUSED, CANCELED |
 | memo | 500자 이하 |
@@ -502,8 +502,12 @@ SubTrack UI는 모바일에서 카드형 목록을 우선합니다.
 - 구독 시작일 또는 첫 결제일
 - 결제수단
 - 상태
-- 상태 적용일(PAUSED/CANCELED 변경 시)
+- 상태 적용일(PAUSED/CANCELED 상태일 때)
 - 메모
+
+기본 카테고리는 `영상`, `음악`, `클라우드`, `생산성`, `인공지능 도구`, `쇼핑`, `교육`, `금융`, `생활`, `기타`처럼 한글 표시명을 사용합니다.
+
+MVP는 KRW 중심으로 사용하며 다중 통화 환율 변환은 구현하지 않습니다.
 
 ### SubscriptionDetail
 

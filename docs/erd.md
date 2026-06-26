@@ -74,6 +74,8 @@ notification 1 : N push_log
 
 MVP에서는 사용자별 커스텀 카테고리를 만들지 않고, 모든 사용자가 같은 기본 카테고리를 사용합니다.
 
+기본 카테고리 표시명은 한글을 사용합니다. seed 기준 `영상`, `음악`, `클라우드`, `생산성`, `인공지능 도구`, `쇼핑`, `교육`, `금융`, `생활`, `기타`를 제공합니다.
+
 | 컬럼 | 설명 |
 |---|---|
 | category_id | PK |
@@ -105,8 +107,8 @@ MVP에서는 사용자별 커스텀 카테고리를 만들지 않고, 모든 사
 | member_id | 작성자 |
 | category_id | 카테고리 |
 | name | 구독명 |
-| price | 결제 금액 |
-| currency | 통화 |
+| price | 결제 금액, 0 이상의 정수 금액 중심 |
+| currency | 통화, MVP에서는 KRW 중심이며 환율 변환 없음 |
 | billing_cycle | MONTHLY, YEARLY |
 | billing_anchor_day | 반복 결제 기준일 |
 | billing_start_date | 구독 시작일 또는 첫 결제일 |
@@ -160,6 +162,8 @@ MVP에서는 사용자별 커스텀 카테고리를 만들지 않고, 모든 사
 | INDEX | subscription_id, status, effective_start_date, effective_end_date |
 
 MySQL에서는 subscription별 열린 이력 1개만 허용하는 partial unique index를 단순하게 적용하기 어렵기 때문에, 열린 이력 관리는 Service 트랜잭션에서 보장합니다.
+
+PAUSED 또는 CANCELED 상태를 유지한 채 `effective_start_date`를 수정하면, 현재 열린 이력의 시작일과 직전 ACTIVE 이력의 종료일을 함께 보정합니다.
 
 ---
 

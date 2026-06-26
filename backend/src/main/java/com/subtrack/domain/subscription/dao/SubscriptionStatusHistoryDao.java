@@ -30,4 +30,14 @@ public interface SubscriptionStatusHistoryDao {
             @Param("subscriptionId") Long subscriptionId,
             @Param("status") String status
     );
+
+    int updateHistoryStartDate(
+            @Param("statusHistoryId") Long statusHistoryId,
+            @Param("effectiveStartDate") LocalDate effectiveStartDate
+    );
+
+    int updateHistoryEndDate(
+            @Param("statusHistoryId") Long statusHistoryId,
+            @Param("effectiveEndDate") LocalDate effectiveEndDate
+    );
 }
