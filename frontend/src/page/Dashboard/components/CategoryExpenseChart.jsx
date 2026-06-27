@@ -20,7 +20,7 @@ function buildChartData(items) {
   return items.map((item) => ({
     ...item,
     categoryName: item.categoryName || "기타",
-    totalAmount: Number(item.totalAmount || 0),
+    totalAmount: Number(item.totalAmountKrw ?? item.totalAmount ?? 0),
     subscriptionCount: Number(item.subscriptionCount || 0),
     colorCode: item.colorCode || "#4f6bff",
   }));

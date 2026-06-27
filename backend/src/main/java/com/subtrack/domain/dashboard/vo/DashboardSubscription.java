@@ -7,14 +7,20 @@ import java.time.LocalDateTime;
 public class DashboardSubscription {
 
     private Long subscriptionId;
+    private String name;
     private Long categoryId;
     private String categoryName;
     private String colorCode;
     private String icon;
     private BigDecimal price;
+    private String currency;
+    private BigDecimal rateToKrw;
+    private BigDecimal convertedPriceKrw;
+    private LocalDate exchangeRateDate;
     private String billingCycle;
     private Integer billingAnchorDay;
     private LocalDate billingStartDate;
+    private String paymentMethod;
     private LocalDateTime deletedAt;
 
     public Long getSubscriptionId() {
@@ -23,6 +29,14 @@ public class DashboardSubscription {
 
     public void setSubscriptionId(Long subscriptionId) {
         this.subscriptionId = subscriptionId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public Long getCategoryId() {
@@ -65,6 +79,38 @@ public class DashboardSubscription {
         this.price = price;
     }
 
+    public String getCurrency() {
+        return currency;
+    }
+
+    public void setCurrency(String currency) {
+        this.currency = currency;
+    }
+
+    public BigDecimal getRateToKrw() {
+        return rateToKrw;
+    }
+
+    public void setRateToKrw(BigDecimal rateToKrw) {
+        this.rateToKrw = rateToKrw;
+    }
+
+    public BigDecimal getConvertedPriceKrw() {
+        return convertedPriceKrw;
+    }
+
+    public void setConvertedPriceKrw(BigDecimal convertedPriceKrw) {
+        this.convertedPriceKrw = convertedPriceKrw;
+    }
+
+    public LocalDate getExchangeRateDate() {
+        return exchangeRateDate;
+    }
+
+    public void setExchangeRateDate(LocalDate exchangeRateDate) {
+        this.exchangeRateDate = exchangeRateDate;
+    }
+
     public String getBillingCycle() {
         return billingCycle;
     }
@@ -87,6 +133,14 @@ public class DashboardSubscription {
 
     public void setBillingStartDate(LocalDate billingStartDate) {
         this.billingStartDate = billingStartDate;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
     }
 
     public LocalDateTime getDeletedAt() {

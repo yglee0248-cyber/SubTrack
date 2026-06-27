@@ -113,6 +113,26 @@ CREATE TABLE payment_history (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
+CREATE TABLE exchange_rate (
+    exchange_rate_id BIGINT NOT NULL AUTO_INCREMENT,
+    currency_code VARCHAR(3) NOT NULL,
+    target_currency VARCHAR(3) NOT NULL DEFAULT 'KRW',
+    rate_to_krw DECIMAL(18, 6) NOT NULL,
+    rate_date DATE NOT NULL,
+    provider VARCHAR(50) NOT NULL,
+    fetched_at DATETIME(6) NOT NULL,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (exchange_rate_id),
+    UNIQUE KEY uk_exchange_rate_currency_rate_date_provider
+        (currency_code, target_currency, rate_date, provider),
+    KEY idx_exchange_rate_currency_fetched_at
+        (currency_code, target_currency, fetched_at),
+    CONSTRAINT chk_exchange_rate_rate_to_krw
+        CHECK (rate_to_krw > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
 CREATE TABLE notification (
     notification_id BIGINT NOT NULL AUTO_INCREMENT,
     member_id BIGINT NOT NULL,

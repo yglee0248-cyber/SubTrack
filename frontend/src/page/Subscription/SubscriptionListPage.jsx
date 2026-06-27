@@ -119,6 +119,8 @@ function SubscriptionListPage() {
     queryClient.invalidateQueries({ queryKey: ["dashboardSummary"] });
     queryClient.invalidateQueries({ queryKey: ["dashboardUpcoming"] });
     queryClient.invalidateQueries({ queryKey: ["dashboardCategoryExpenses"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard", "monthlyExpenses"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard", "monthlySchedule"] });
   }
 
   function showSnackbar(message, severity = "success") {

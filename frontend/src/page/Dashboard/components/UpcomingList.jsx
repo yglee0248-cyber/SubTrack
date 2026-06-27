@@ -1,10 +1,10 @@
 import { CircularProgress, Typography } from "@mui/material";
 import {
-  formatDashboardAmount,
   formatDashboardDate,
   getDashboardPaymentStatusLabel,
   getDashboardPaymentStatusTone,
 } from "../../../features/dashboard/utils/dashboardFormat";
+import { formatOriginalAndKrwAmount } from "../../../shared/utils/currencyFormat";
 import styles from "../DashboardPage.module.css";
 import { DashboardEmptyState } from "./DashboardEmptyState";
 
@@ -48,7 +48,7 @@ export function UpcomingList({ items, loading }) {
               </Typography>
             </div>
             <Typography variant="subtitle2" component="p" className={styles.upcomingAmount}>
-              {formatDashboardAmount(item.price, item.currency || "KRW")}
+              {formatOriginalAndKrwAmount(item.price, item.currency || "KRW", item.convertedPriceKrw)}
             </Typography>
           </li>
         );

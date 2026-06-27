@@ -7,9 +7,13 @@ public class DashboardSummaryResponse {
 
     private final String yearMonth;
     private final int activeSubscriptionCount;
+    private final int monthlySubscriptionCount;
     private final BigDecimal monthlyExpectedAmount;
+    private final BigDecimal monthlyExpectedAmountKrw;
     private final int upcomingCount;
     private final int dueTodayCount;
+    private final int todayPaymentCount;
+    private final String currency;
 
     public DashboardSummaryResponse(
             String yearMonth,
@@ -20,9 +24,13 @@ public class DashboardSummaryResponse {
     ) {
         this.yearMonth = yearMonth;
         this.activeSubscriptionCount = activeSubscriptionCount;
+        this.monthlySubscriptionCount = activeSubscriptionCount;
         this.monthlyExpectedAmount = monthlyExpectedAmount;
+        this.monthlyExpectedAmountKrw = monthlyExpectedAmount;
         this.upcomingCount = upcomingCount;
         this.dueTodayCount = dueTodayCount;
+        this.todayPaymentCount = dueTodayCount;
+        this.currency = "KRW";
     }
 
     public static DashboardSummaryResponse of(String yearMonth, DashboardSummary summary) {
@@ -43,8 +51,16 @@ public class DashboardSummaryResponse {
         return activeSubscriptionCount;
     }
 
+    public int getMonthlySubscriptionCount() {
+        return monthlySubscriptionCount;
+    }
+
     public BigDecimal getMonthlyExpectedAmount() {
         return monthlyExpectedAmount;
+    }
+
+    public BigDecimal getMonthlyExpectedAmountKrw() {
+        return monthlyExpectedAmountKrw;
     }
 
     public int getUpcomingCount() {
@@ -53,6 +69,14 @@ public class DashboardSummaryResponse {
 
     public int getDueTodayCount() {
         return dueTodayCount;
+    }
+
+    public int getTodayPaymentCount() {
+        return todayPaymentCount;
+    }
+
+    public String getCurrency() {
+        return currency;
     }
 
     private static int valueOrZero(Integer value) {

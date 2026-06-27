@@ -13,6 +13,9 @@ public class UpcomingSubscriptionResponse {
     private final String categoryName;
     private final BigDecimal price;
     private final String currency;
+    private final BigDecimal rateToKrw;
+    private final BigDecimal convertedPriceKrw;
+    private final LocalDate exchangeRateDate;
     private final LocalDate nextPaymentDate;
     private final String paymentStatus;
 
@@ -23,6 +26,9 @@ public class UpcomingSubscriptionResponse {
             String categoryName,
             BigDecimal price,
             String currency,
+            BigDecimal rateToKrw,
+            BigDecimal convertedPriceKrw,
+            LocalDate exchangeRateDate,
             LocalDate nextPaymentDate,
             String paymentStatus
     ) {
@@ -32,6 +38,9 @@ public class UpcomingSubscriptionResponse {
         this.categoryName = categoryName;
         this.price = price;
         this.currency = currency;
+        this.rateToKrw = rateToKrw;
+        this.convertedPriceKrw = convertedPriceKrw;
+        this.exchangeRateDate = exchangeRateDate;
         this.nextPaymentDate = nextPaymentDate;
         this.paymentStatus = paymentStatus;
     }
@@ -44,6 +53,9 @@ public class UpcomingSubscriptionResponse {
                 subscription.getCategoryName(),
                 subscription.getPrice(),
                 subscription.getCurrency(),
+                subscription.getRateToKrw(),
+                subscription.getConvertedPriceKrw(),
+                subscription.getExchangeRateDate(),
                 subscription.getNextPaymentDate(),
                 PaymentStatusCalculator.calculate(subscription.getNextPaymentDate())
         );
@@ -71,6 +83,18 @@ public class UpcomingSubscriptionResponse {
 
     public String getCurrency() {
         return currency;
+    }
+
+    public BigDecimal getRateToKrw() {
+        return rateToKrw;
+    }
+
+    public BigDecimal getConvertedPriceKrw() {
+        return convertedPriceKrw;
+    }
+
+    public LocalDate getExchangeRateDate() {
+        return exchangeRateDate;
     }
 
     public LocalDate getNextPaymentDate() {

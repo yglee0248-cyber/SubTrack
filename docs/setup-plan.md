@@ -17,7 +17,8 @@ SubTrack은 다음 순서로 개발합니다.
 11. 로그인 / 회원가입 화면
 12. 구독 목록 / 등록 / 수정 / 상세 화면
 13. 대시보드 화면
-14. P1 결제 완료 / 알림 / 테스트
+14. 다중 통화 / 환율 캐시 / KRW 환산 Dashboard
+15. P1 알림 / 테스트
 
 ---
 
@@ -67,7 +68,7 @@ backend/
          │   └─ vo/
          ├─ category/
          ├─ subscription/
-         ├─ payment/
+         ├─ exchange/
          ├─ dashboard/
          ├─ notification/
          └─ push/
@@ -94,7 +95,7 @@ MemberDao
 CategoryDao
 SubscriptionDao
 SubscriptionStatusHistoryDao
-PaymentHistoryDao
+ExchangeRateDao
 DashboardDao
 NotificationDao
 PushLogDao
@@ -117,6 +118,10 @@ mybatis:
   type-aliases-package: com.subtrack.domain
   configuration:
     map-underscore-to-camel-case: true
+
+exchange-rate:
+  provider: frankfurter
+  base-url: ${EXCHANGE_RATE_BASE_URL:https://api.frankfurter.dev}
 
 jwt:
   secret: ${JWT_SECRET}
@@ -171,7 +176,7 @@ DataIntegrityViolationException -> 409
 Exception -> 500
 ```
 
-P1 결제 완료 중복 처리에서 `DataIntegrityViolationException`을 409 Conflict로 변환하는 것이 중요합니다.
+예상 가능한 데이터 중복이나 제약 위반은 `BusinessException` 또는 `DataIntegrityViolationException` 핸들러를 통해 공통 에러 응답으로 변환합니다.
 
 ---
 
@@ -211,11 +216,11 @@ P1 결제 완료 중복 처리에서 `DataIntegrityViolationException`을 409 Co
 
 1. 다음 결제일 계산 테스트
 2. `billing_anchor_day = 31` 케이스 테스트
-3. 결제 완료 시 payment_history 저장 테스트
-4. 결제 완료 시 next_payment_date 갱신 테스트
-5. 중복 결제 완료 시 409 응답 테스트
-6. 다른 사용자의 구독 접근 차단 테스트
-7. 대시보드 집계 테스트
+3. 다중 통화 금액 validation 테스트
+4. 환율 캐시 fallback 테스트
+5. 다른 사용자의 구독 접근 차단 테스트
+6. 상태 이력 기반 대시보드 집계 테스트
+7. 월별 예상 구독료 추이 테스트
 
 ---
 
@@ -361,7 +366,8 @@ SubTrack에서는 백엔드 응답이 공통 응답 형태이므로, 각 API 함
 ["dashboard", "summary", yearMonth]
 ["dashboard", "upcoming", days]
 ["dashboard", "category-expenses", yearMonth]
-["dashboard", "monthly-expenses", year]
+["dashboard", "monthly-expenses", from, to]
+["dashboard", "monthly-schedule", yearMonth]
 
 ["notifications", "list", filters]
 ```
@@ -373,7 +379,6 @@ mutation 후 invalidate 기준:
 | 구독 등록 | subscriptions, dashboard |
 | 구독 수정 | subscriptions, subscription detail, dashboard |
 | 구독 삭제 | subscriptions, dashboard |
-| 결제 완료 | subscriptions, subscription detail, dashboard |
 | 알림 읽음 | notifications |
 | 닉네임 수정 | member me |
 
@@ -416,7 +421,8 @@ features/member/validation/memberSchema.js
 |---|---|
 | name | 필수, 1~100자 |
 | categoryId | 필수 |
-| price | 필수, 0 이상의 정수 |
+| price | 필수, 0 이상. KRW/JPY는 정수, USD/CNY/EUR는 소수 2자리까지 |
+| currency | KRW, USD, JPY, CNY, EUR |
 | billingCycle | MONTHLY 또는 YEARLY |
 | billingStartDate | 필수 날짜, 구독 시작일 또는 첫 결제일, 미래 날짜 허용 |
 | statusEffectiveDate | PAUSED/CANCELED일 때 필수, billingStartDate 이상 오늘 이하, 상태 유지 수정 시 변경 가능 |
@@ -483,6 +489,8 @@ SubTrack UI는 모바일에서 카드형 목록을 우선합니다.
 - 오늘 결제 예정 수
 - 다가오는 결제 목록
 - 카테고리별 월간 구독료 차트
+- 월별 예상 구독료 추이 차트
+- 선택 월 결제 예정 목록
 
 ### SubscriptionList
 
@@ -498,6 +506,7 @@ SubTrack UI는 모바일에서 카드형 목록을 우선합니다.
 - 구독명
 - 카테고리
 - 금액
+- 통화
 - 결제주기
 - 구독 시작일 또는 첫 결제일
 - 결제수단
@@ -507,7 +516,7 @@ SubTrack UI는 모바일에서 카드형 목록을 우선합니다.
 
 기본 카테고리는 `영상`, `음악`, `클라우드`, `생산성`, `인공지능 도구`, `쇼핑`, `교육`, `금융`, `생활`, `기타`처럼 한글 표시명을 사용합니다.
 
-MVP는 KRW 중심으로 사용하며 다중 통화 환율 변환은 구현하지 않습니다.
+MVP는 `KRW`, `USD`, `JPY`, `CNY`, `EUR` 통화 입력을 지원합니다. Dashboard 금액은 백엔드의 `exchange_rate` 캐시를 통해 KRW 환산 기준으로 표시합니다.
 
 ### SubscriptionDetail
 
@@ -515,8 +524,6 @@ MVP는 KRW 중심으로 사용하며 다중 통화 환율 변환은 구현하지
 - 결제 정보
 - 결제 기준일
 - 수정 / 삭제 버튼
-- P1 결제 완료 버튼
-- P1 결제 이력 목록
 
 ### Notification
 
@@ -550,6 +557,6 @@ Codex에게 한 번에 전체 프로젝트를 만들게 하지 않습니다.
 10. 로그인 / 회원가입 화면
 11. 구독 목록 / 등록 / 수정 / 상세 화면
 12. 대시보드 화면
-13. P1 결제 완료
+13. 다중 통화 / 환율 캐시 / KRW 환산 Dashboard
 14. P1 알림 / OneSignal
 15. 테스트 코드

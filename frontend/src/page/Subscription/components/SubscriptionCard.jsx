@@ -1,13 +1,13 @@
 import { Button } from "@mui/material";
 import {
   formatPaymentDate,
-  formatSubscriptionPrice,
   getBillingCycleLabel,
   getPaymentStatusLabel,
   getPaymentStatusTone,
   getStatusTone,
   getSubscriptionStatusLabel,
 } from "../../../features/subscription/utils/subscriptionLabel";
+import { formatOriginalAndKrwAmount } from "../../../shared/utils/currencyFormat";
 import styles from "../SubscriptionListPage.module.css";
 
 export function SubscriptionCard({ subscription, category, onEdit, onDelete, isDeleting }) {
@@ -45,7 +45,13 @@ export function SubscriptionCard({ subscription, category, onEdit, onDelete, isD
       <dl className={styles.cardMeta}>
         <div>
           <dt>금액</dt>
-          <dd>{formatSubscriptionPrice(subscription.price, subscription.currency)}</dd>
+          <dd>
+            {formatOriginalAndKrwAmount(
+              subscription.price,
+              subscription.currency,
+              subscription.convertedPriceKrw
+            )}
+          </dd>
         </div>
         <div>
           <dt>주기</dt>

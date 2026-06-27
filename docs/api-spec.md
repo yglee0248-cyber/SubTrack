@@ -265,6 +265,9 @@ size=20
       "nextPaymentDate": "2026-06-25",
       "statusEffectiveDate": "2025-12-25",
       "paymentStatus": "DUE_TODAY",
+      "rateToKrw": 1.000000,
+      "convertedPriceKrw": 17000,
+      "exchangeRateDate": null,
       "paymentMethod": "CARD",
       "status": "ACTIVE"
     }
@@ -301,7 +304,7 @@ size=20
 
 `billingStartDate`는 과거, 오늘, 미래 날짜를 모두 허용합니다. 앞으로 시작될 구독을 미리 등록할 수 있습니다.
 
-`price`는 0 이상의 정수 금액을 허용합니다. MVP는 KRW 중심으로 사용하며 다중 통화 환율 변환은 구현하지 않습니다.
+`currency`는 `KRW`, `USD`, `JPY`, `CNY`, `EUR`를 지원합니다. `price`는 입력한 원 통화 금액 그대로 저장하며, 외화 구독은 Dashboard와 조회 응답에서 캐시된 환율 기준 KRW 환산 금액을 함께 제공합니다. `KRW`/`JPY`는 정수 입력을 권장하고, `USD`/`CNY`/`EUR`는 소수 2자리까지 허용합니다.
 
 `status`가 `PAUSED` 또는 `CANCELED`인 상태로 등록하는 경우 `statusEffectiveDate`는 필수입니다. `statusEffectiveDate`는 `billingStartDate`보다 이전일 수 없고, MVP에서는 미래 날짜를 허용하지 않습니다.
 
@@ -360,6 +363,9 @@ size=20
   "nextPaymentDate": "2026-06-25",
   "statusEffectiveDate": "2025-12-25",
   "paymentStatus": "DUE_TODAY",
+  "rateToKrw": 1.000000,
+  "convertedPriceKrw": 17000,
+  "exchangeRateDate": null,
   "paymentMethod": "CARD",
   "status": "ACTIVE",
   "memo": "프리미엄 요금제"
@@ -421,39 +427,19 @@ size=20
 
 ---
 
-## POST /api/subscriptions/{subscriptionId}/payments
+## 다중 통화와 KRW 환산
 
-결제 완료 처리 API입니다.
+MVP는 구독 원 금액과 통화를 그대로 저장하고, 조회/대시보드 계산 시 KRW 환산 금액을 함께 제공합니다.
 
-범위: P1
+지원 통화:
 
-### Request
-
-```json
-{
-  "paidDate": "2026-06-20"
-}
+```txt
+KRW, USD, JPY, CNY, EUR
 ```
 
-### Response data
+환율은 백엔드가 Frankfurter API를 호출해 `exchange_rate` 테이블에 캐시합니다. 같은 날 이미 조회한 `provider = FRANKFURTER` 통화 row만 최신 캐시로 사용하고, 외부 API 실패 시에만 가장 최근 캐시를 fallback으로 사용합니다. `SYSTEM` seed는 fallback 전용이며 오늘 최신 캐시로 취급하지 않습니다. `KRW -> KRW` 환율은 코드에서 `1.000000`으로 처리하며 외부 API를 호출하지 않습니다.
 
-```json
-{
-  "paymentHistoryId": 1,
-  "subscriptionId": 1,
-  "scheduledPaymentDate": "2026-06-20",
-  "paidDate": "2026-06-20",
-  "amount": 17000,
-  "nextPaymentDate": "2026-07-20"
-}
-```
-
-### 정책
-
-- `scheduledPaymentDate`는 클라이언트가 보내지 않습니다.
-- 서버가 `subscription.next_payment_date`를 기준으로 설정합니다.
-- `amount`, `currency`, `paymentMethod`도 서버가 subscription에서 가져옵니다.
-- 중복 결제 완료 시 409 Conflict를 반환합니다.
+`payment_history`와 결제 완료 처리는 MVP에서 구현하지 않습니다. SubTrack의 Dashboard는 사용자가 등록한 구독 정보 기반의 예상 구독료 흐름을 보여줍니다.
 
 ---
 
@@ -463,7 +449,7 @@ size=20
 
 월별 대시보드 요약 API입니다.
 
-월간 예상 금액은 `billingStartDate + billingCycle` 반복 규칙과 `subscription_status_history`를 기준으로 선택 월에 ACTIVE 상태였던 결제 발생분만 합산합니다.
+월간 예상 금액은 `billingStartDate + billingCycle` 반복 규칙과 `subscription_status_history`를 기준으로 선택 월에 ACTIVE 상태였던 결제 발생분만 합산합니다. 모든 금액 합계는 KRW 환산 기준입니다.
 
 범위: P0
 
@@ -479,9 +465,13 @@ yearMonth=2026-06
 {
   "yearMonth": "2026-06",
   "activeSubscriptionCount": 5,
-  "monthlyExpectedAmount": 54000,
+  "monthlySubscriptionCount": 5,
+  "monthlyExpectedAmount": 57610,
+  "monthlyExpectedAmountKrw": 57610,
+  "currency": "KRW",
   "upcomingCount": 2,
-  "dueTodayCount": 1
+  "dueTodayCount": 1,
+  "todayPaymentCount": 1
 }
 ```
 
@@ -490,9 +480,13 @@ yearMonth=2026-06
 | 필드 | 의미 |
 |---|---|
 | activeSubscriptionCount | 선택 월에 결제가 발생하고 해당 결제 발생일이 ACTIVE 상태 이력에 포함되는 구독 수 |
-| monthlyExpectedAmount | 선택 월 결제 발생일이 ACTIVE 상태 이력에 포함되는 구독료 합계 |
+| monthlySubscriptionCount | `activeSubscriptionCount`와 같은 의미의 호환 필드 |
+| monthlyExpectedAmount | 선택 월 결제 발생일이 ACTIVE 상태 이력에 포함되는 구독료 합계, KRW 환산 기준 |
+| monthlyExpectedAmountKrw | `monthlyExpectedAmount`와 같은 값의 명시적 KRW 필드 |
+| currency | 합계 표시 통화, 현재는 KRW |
 | upcomingCount | 현재 기준 오늘부터 7일 이내 `nextPaymentDate`가 있는 ACTIVE 구독 수 |
 | dueTodayCount | 현재 기준 오늘 결제 예정인 ACTIVE 구독 수 |
+| todayPaymentCount | `dueTodayCount`와 같은 의미의 호환 필드 |
 
 MVP에서는 `payment_history` 기반 결제 완료 여부를 추적하지 않으므로 미납 상태를 판단하지 않습니다.
 
@@ -520,6 +514,10 @@ days=7
     "categoryId": 1,
     "categoryName": "영상",
     "price": 17000,
+    "currency": "KRW",
+    "rateToKrw": 1.000000,
+    "convertedPriceKrw": 17000,
+    "exchangeRateDate": null,
     "nextPaymentDate": "2026-06-20",
     "paymentStatus": "DUE_SOON"
   }
@@ -532,7 +530,7 @@ days=7
 
 카테고리별 결제 예정액 API입니다.
 
-카테고리별 금액은 `billingStartDate + billingCycle` 반복 규칙과 `subscription_status_history`를 기준으로 선택 월에 ACTIVE 상태였던 결제 발생분을 카테고리별로 합산합니다.
+카테고리별 금액은 `billingStartDate + billingCycle` 반복 규칙과 `subscription_status_history`를 기준으로 선택 월에 ACTIVE 상태였던 결제 발생분을 카테고리별로 합산합니다. 금액은 KRW 환산 기준입니다.
 
 범위: P0
 
@@ -552,6 +550,7 @@ yearMonth=2026-06
     "colorCode": "#E53935",
     "icon": "movie",
     "totalAmount": 27000,
+    "totalAmountKrw": 27000,
     "subscriptionCount": 2
   },
   {
@@ -560,6 +559,7 @@ yearMonth=2026-06
     "colorCode": "#8E24AA",
     "icon": "music_note",
     "totalAmount": 12000,
+    "totalAmountKrw": 12000,
     "subscriptionCount": 1
   }
 ]
@@ -569,32 +569,84 @@ yearMonth=2026-06
 
 ## GET /api/dashboard/monthly-expenses
 
-월별 실제 지출 추이 API입니다.
+월별 예상 구독료 추이 API입니다.
 
-범위: P1
+범위: P0
 
 ### Query
 
 ```txt
-year=2026
+from=2026-01
+to=2026-12
+```
+
+`from`, `to`는 필수이며 `YYYY-MM` 형식입니다. 조회 범위는 최대 24개월입니다.
+
+### Response data
+
+```json
+{
+  "from": "2026-01",
+  "to": "2026-12",
+  "currency": "KRW",
+  "items": [
+    {
+      "yearMonth": "2026-01",
+      "expectedAmountKrw": 42900,
+      "subscriptionCount": 3
+    },
+    {
+      "yearMonth": "2026-02",
+      "expectedAmountKrw": 53800,
+      "subscriptionCount": 4
+    }
+  ]
+}
+```
+
+각 월은 Dashboard summary의 월간 예상 구독료와 같은 기준으로 계산합니다. 데이터가 없는 월도 `expectedAmountKrw = 0`, `subscriptionCount = 0`으로 포함합니다.
+
+---
+
+## GET /api/dashboard/monthly-schedule
+
+선택 월 결제 예정 목록 API입니다.
+
+범위: P0
+
+### Query
+
+```txt
+yearMonth=2026-06
 ```
 
 ### Response data
 
 ```json
-[
-  {
-    "month": "2026-01",
-    "amount": 32000
-  },
-  {
-    "month": "2026-02",
-    "amount": 45000
-  }
-]
+{
+  "yearMonth": "2026-06",
+  "items": [
+    {
+      "subscriptionId": 1,
+      "name": "ChatGPT Plus",
+      "categoryId": 5,
+      "categoryName": "인공지능 도구",
+      "colorCode": "#7C3AED",
+      "icon": "ai",
+      "paymentDate": "2026-06-26",
+      "price": 20.00,
+      "currency": "USD",
+      "rateToKrw": 1380.500000,
+      "convertedPriceKrw": 27610,
+      "exchangeRateDate": "2026-06-26",
+      "billingCycle": "MONTHLY",
+      "paymentMethod": "Visa"
+    }
+  ]
+}
 ```
 
-이 API는 `payment_history.paid_date` 기준으로 집계합니다.
+이 API는 현재 기준 upcoming이 아니라 선택한 월 전체의 반복 결제 예정 목록입니다. 선택 월의 결제 발생일이 ACTIVE 상태 이력 기간에 포함되는 구독만 반환합니다.
 
 ---
 

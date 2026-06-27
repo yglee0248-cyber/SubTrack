@@ -17,6 +17,11 @@ import {
   SUBSCRIPTION_STATUS_OPTIONS,
 } from "../../../features/subscription/utils/subscriptionLabel";
 import { subscriptionSchema } from "../../../features/subscription/validation/subscriptionSchema";
+import {
+  CURRENCY_OPTIONS,
+  getCurrencyAmountStep,
+  getCurrencyHelperText,
+} from "../../../shared/utils/currencyFormat";
 import styles from "../SubscriptionListPage.module.css";
 
 function getTodayDate() {
@@ -92,6 +97,7 @@ export function SubscriptionFormModal({
   }, [initialValues, open, reset]);
 
   const selectedStatus = watch("status") || "ACTIVE";
+  const selectedCurrency = watch("currency") || "KRW";
   const shouldShowStatusEffectiveDate = selectedStatus !== "ACTIVE";
   const originalStatus = mode === "edit" ? initialValues?.status || "" : "";
   const isEditMode = mode === "edit";
@@ -219,22 +225,34 @@ export function SubscriptionFormModal({
                 fullWidth
                 disabled={disabled}
                 InputLabelProps={{ shrink: true }}
-                inputProps={{ min: 0, step: 1, "data-testid": "subscription-price-input" }}
+                inputProps={{
+                  min: 0,
+                  step: getCurrencyAmountStep(selectedCurrency),
+                  "data-testid": "subscription-price-input",
+                }}
                 error={Boolean(errors.price)}
-                helperText={errors.price?.message}
+                helperText={errors.price?.message || getCurrencyHelperText(selectedCurrency)}
                 {...register("price")}
               />
 
               <TextField
+                select
                 label="통화"
                 fullWidth
                 disabled={disabled}
+                SelectProps={{ native: true }}
                 InputLabelProps={{ shrink: true }}
-                inputProps={{ maxLength: 3, "data-testid": "subscription-currency-input" }}
+                inputProps={{ "data-testid": "subscription-currency-input" }}
                 error={Boolean(errors.currency)}
                 helperText={errors.currency?.message}
                 {...register("currency")}
-              />
+              >
+                {CURRENCY_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </TextField>
             </div>
 
             <div className={styles.formGrid}>

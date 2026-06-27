@@ -10,6 +10,7 @@ public class CategoryExpenseResponse {
     private final String colorCode;
     private final String icon;
     private final BigDecimal totalAmount;
+    private final BigDecimal totalAmountKrw;
     private final int subscriptionCount;
 
     public CategoryExpenseResponse(
@@ -25,6 +26,7 @@ public class CategoryExpenseResponse {
         this.colorCode = colorCode;
         this.icon = icon;
         this.totalAmount = totalAmount;
+        this.totalAmountKrw = totalAmount;
         this.subscriptionCount = subscriptionCount;
     }
 
@@ -57,6 +59,10 @@ public class CategoryExpenseResponse {
 
     public BigDecimal getTotalAmount() {
         return totalAmount;
+    }
+
+    public BigDecimal getTotalAmountKrw() {
+        return totalAmountKrw;
     }
 
     public int getSubscriptionCount() {

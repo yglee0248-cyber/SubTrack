@@ -7,6 +7,8 @@ import {
   getCategoryExpenses,
   getDashboardSummary,
   getDashboardUpcoming,
+  getMonthlyExpenses,
+  getMonthlySchedule,
 } from "../../features/dashboard/api/dashboardApi";
 import {
   formatDashboardAmount,
@@ -16,16 +18,27 @@ import {
 } from "../../features/dashboard/utils/dashboardFormat";
 import { getApiErrorMessage } from "../../shared/utils/errorMessage";
 import { CategoryExpenseChart } from "./components/CategoryExpenseChart";
+import { MonthlyExpenseTrend } from "./components/MonthlyExpenseTrend";
+import { MonthlyScheduleList } from "./components/MonthlyScheduleList";
 import { SummaryCard } from "./components/SummaryCard";
 import { UpcomingList } from "./components/UpcomingList";
 import styles from "./DashboardPage.module.css";
 
 const UPCOMING_DAYS = 7;
 
+function getYearRange(yearMonth) {
+  const year = (yearMonth || getCurrentYearMonth()).slice(0, 4);
+  return {
+    from: `${year}-01`,
+    to: `${year}-12`,
+  };
+}
+
 function DashboardPage() {
   const member = useAuthStore((state) => state.member);
   const setMember = useAuthStore((state) => state.setMember);
   const [yearMonth, setYearMonth] = useState(getCurrentYearMonth);
+  const yearRange = getYearRange(yearMonth);
 
   const memberQuery = useQuery({
     queryKey: ["member", "me"],
@@ -55,6 +68,20 @@ function DashboardPage() {
     refetchOnMount: "always",
   });
 
+  const monthlyExpensesQuery = useQuery({
+    queryKey: ["dashboard", "monthlyExpenses", yearRange.from, yearRange.to],
+    queryFn: () => getMonthlyExpenses(yearRange.from, yearRange.to),
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+
+  const monthlyScheduleQuery = useQuery({
+    queryKey: ["dashboard", "monthlySchedule", yearMonth],
+    queryFn: () => getMonthlySchedule(yearMonth),
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+
   useEffect(() => {
     if (memberQuery.data) {
       setMember({
@@ -69,8 +96,18 @@ function DashboardPage() {
   const summary = summaryQuery.data || {};
   const categoryExpenses = categoryExpensesQuery.data || [];
   const upcomingSubscriptions = upcomingQuery.data || [];
-  const hasDashboardError = summaryQuery.isError || upcomingQuery.isError || categoryExpensesQuery.isError;
-  const dashboardError = summaryQuery.error || upcomingQuery.error || categoryExpensesQuery.error;
+  const hasDashboardError =
+    summaryQuery.isError ||
+    upcomingQuery.isError ||
+    categoryExpensesQuery.isError ||
+    monthlyExpensesQuery.isError ||
+    monthlyScheduleQuery.isError;
+  const dashboardError =
+    summaryQuery.error ||
+    upcomingQuery.error ||
+    categoryExpensesQuery.error ||
+    monthlyExpensesQuery.error ||
+    monthlyScheduleQuery.error;
 
   return (
     <section className={styles.page}>
@@ -83,7 +120,7 @@ function DashboardPage() {
             선택한 월의 구독료 흐름을 확인하세요.
           </Typography>
           <Typography variant="body2" className={styles.monthCaption}>
-            구독 시작일과 결제 주기를 기준으로 계산한 예상 데이터입니다.
+            구독 시작일, 결제 주기, 상태 이력을 기준으로 계산한 예상 데이터입니다. 외화 구독은 캐시 환율로 KRW 환산됩니다.
           </Typography>
         </div>
 
@@ -120,8 +157,8 @@ function DashboardPage() {
         />
         <SummaryCard
           label="월간 구독료 합계"
-          value={formatDashboardAmount(summary.monthlyExpectedAmount)}
-          helper={`${formatYearMonthLabel(summary.yearMonth || yearMonth)} 기준, 시작일·주기·상태 이력으로 계산합니다.`}
+          value={formatDashboardAmount(summary.monthlyExpectedAmountKrw ?? summary.monthlyExpectedAmount)}
+          helper={`${formatYearMonthLabel(summary.yearMonth || yearMonth)} 기준, KRW 환산 예상 금액입니다.`}
           tone="green"
           loading={summaryQuery.isLoading}
         />
@@ -149,7 +186,7 @@ function DashboardPage() {
                 7일 이내 결제 예정
               </Typography>
               <Typography variant="body2" className={styles.sectionDescription}>
-                가까운 결제일부터 순서대로 보여줍니다.
+                오늘 기준 가까운 결제일부터 순서대로 보여줍니다.
               </Typography>
             </div>
             {upcomingQuery.isFetching && !upcomingQuery.isLoading && (
@@ -166,7 +203,7 @@ function DashboardPage() {
                 카테고리별 월간 구독료
               </Typography>
               <Typography variant="body2" className={styles.sectionDescription}>
-                구독 시작일, 결제 주기, 상태 이력을 기준으로 계산합니다.
+                KRW 환산 기준으로 카테고리별 예상 지출을 계산합니다.
               </Typography>
             </div>
             {categoryExpensesQuery.isFetching && !categoryExpensesQuery.isLoading && (
@@ -180,6 +217,44 @@ function DashboardPage() {
           />
         </section>
       </div>
+
+      <section className={`${styles.panel} ${styles.widePanel}`}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <Typography variant="h6" component="h2" className={styles.sectionTitle}>
+              월별 예상 구독료 추이
+            </Typography>
+            <Typography variant="body2" className={styles.sectionDescription}>
+              선택한 연도의 월별 예상 구독료 흐름입니다. KRW 환산 기준으로 표시됩니다.
+            </Typography>
+          </div>
+          {monthlyExpensesQuery.isFetching && !monthlyExpensesQuery.isLoading && (
+            <span className={styles.fetchingText}>새로고침 중</span>
+          )}
+        </div>
+        <MonthlyExpenseTrend data={monthlyExpensesQuery.data} loading={monthlyExpensesQuery.isLoading} />
+      </section>
+
+      <section className={`${styles.panel} ${styles.widePanel}`}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <Typography variant="h6" component="h2" className={styles.sectionTitle}>
+              선택 월 결제 예정
+            </Typography>
+            <Typography variant="body2" className={styles.sectionDescription}>
+              {formatYearMonthLabel(yearMonth)}에 예정된 구독 결제 목록입니다.
+            </Typography>
+          </div>
+          {monthlyScheduleQuery.isFetching && !monthlyScheduleQuery.isLoading && (
+            <span className={styles.fetchingText}>새로고침 중</span>
+          )}
+        </div>
+        <MonthlyScheduleList
+          data={monthlyScheduleQuery.data}
+          loading={monthlyScheduleQuery.isLoading}
+          yearMonth={yearMonth}
+        />
+      </section>
     </section>
   );
 }

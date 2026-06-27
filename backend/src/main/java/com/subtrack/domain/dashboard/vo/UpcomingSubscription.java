@@ -11,6 +11,9 @@ public class UpcomingSubscription {
     private String categoryName;
     private BigDecimal price;
     private String currency;
+    private BigDecimal rateToKrw;
+    private BigDecimal convertedPriceKrw;
+    private LocalDate exchangeRateDate;
     private LocalDate nextPaymentDate;
 
     public Long getSubscriptionId() {
@@ -59,6 +62,30 @@ public class UpcomingSubscription {
 
     public void setCurrency(String currency) {
         this.currency = currency;
+    }
+
+    public BigDecimal getRateToKrw() {
+        return rateToKrw;
+    }
+
+    public void setRateToKrw(BigDecimal rateToKrw) {
+        this.rateToKrw = rateToKrw;
+    }
+
+    public BigDecimal getConvertedPriceKrw() {
+        return convertedPriceKrw;
+    }
+
+    public void setConvertedPriceKrw(BigDecimal convertedPriceKrw) {
+        this.convertedPriceKrw = convertedPriceKrw;
+    }
+
+    public LocalDate getExchangeRateDate() {
+        return exchangeRateDate;
+    }
+
+    public void setExchangeRateDate(LocalDate exchangeRateDate) {
+        this.exchangeRateDate = exchangeRateDate;
     }
 
     public LocalDate getNextPaymentDate() {

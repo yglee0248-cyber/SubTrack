@@ -1,6 +1,9 @@
 package com.subtrack.domain.subscription.service;
 
 import com.subtrack.domain.category.dao.CategoryDao;
+import com.subtrack.domain.exchange.dto.ExchangeRateConversion;
+import com.subtrack.domain.exchange.dto.ExchangeRateQuote;
+import com.subtrack.domain.exchange.service.ExchangeRateService;
 import com.subtrack.domain.subscription.dao.SubscriptionDao;
 import com.subtrack.domain.subscription.dao.SubscriptionStatusHistoryDao;
 import com.subtrack.domain.subscription.dto.SubscriptionCreateRequest;
@@ -17,11 +20,15 @@ import com.subtrack.global.exception.BusinessException;
 import com.subtrack.global.exception.ErrorCode;
 import com.subtrack.global.util.BillingDateCalculator;
 import com.subtrack.global.util.PaymentStatusCalculator;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -44,17 +51,20 @@ public class SubscriptionService {
     private final CategoryDao categoryDao;
     private final SubscriptionStatusHistoryDao statusHistoryDao;
     private final SubscriptionNextPaymentDateNormalizer nextPaymentDateNormalizer;
+    private final ExchangeRateService exchangeRateService;
 
     public SubscriptionService(
             SubscriptionDao subscriptionDao,
             CategoryDao categoryDao,
             SubscriptionStatusHistoryDao statusHistoryDao,
-            SubscriptionNextPaymentDateNormalizer nextPaymentDateNormalizer
+            SubscriptionNextPaymentDateNormalizer nextPaymentDateNormalizer,
+            ExchangeRateService exchangeRateService
     ) {
         this.subscriptionDao = subscriptionDao;
         this.categoryDao = categoryDao;
         this.statusHistoryDao = statusHistoryDao;
         this.nextPaymentDateNormalizer = nextPaymentDateNormalizer;
+        this.exchangeRateService = exchangeRateService;
     }
 
     @Transactional
@@ -79,8 +89,11 @@ public class SubscriptionService {
         );
 
         int totalCount = subscriptionDao.countSubscriptions(condition);
+        List<Subscription> subscriptions = subscriptionDao.findSubscriptions(condition);
+        applyExchangeConversions(subscriptions);
+
         return SubscriptionListResponse.of(
-                subscriptionDao.findSubscriptions(condition),
+                subscriptions,
                 condition.getPage(),
                 condition.getSize(),
                 totalCount
@@ -104,6 +117,7 @@ public class SubscriptionService {
     public SubscriptionDetailResponse getSubscription(Long memberId, Long subscriptionId) {
         Subscription subscription = findOwnedSubscription(memberId, subscriptionId);
         nextPaymentDateNormalizer.normalizeIfNeeded(subscription);
+        applyExchangeConversion(subscription);
         return SubscriptionDetailResponse.from(subscription);
     }
 
@@ -182,8 +196,7 @@ public class SubscriptionService {
     private void applyCreateRequest(Subscription subscription, SubscriptionCreateRequest request) {
         subscription.setCategoryId(request.getCategoryId());
         subscription.setName(request.getName());
-        subscription.setPrice(request.getPrice());
-        subscription.setCurrency(resolveCurrency(request.getCurrency()));
+        applyMoney(subscription, request.getPrice(), request.getCurrency());
         subscription.setBillingCycle(request.getBillingCycle());
         applyBillingDates(subscription, request.getBillingStartDate(), request.getBillingCycle());
         subscription.setPaymentMethod(request.getPaymentMethod());
@@ -194,8 +207,7 @@ public class SubscriptionService {
     private void applyUpdateRequest(Subscription subscription, SubscriptionUpdateRequest request) {
         subscription.setCategoryId(request.getCategoryId());
         subscription.setName(request.getName());
-        subscription.setPrice(request.getPrice());
-        subscription.setCurrency(resolveCurrency(request.getCurrency()));
+        applyMoney(subscription, request.getPrice(), request.getCurrency());
         subscription.setBillingCycle(request.getBillingCycle());
         applyBillingDates(subscription, request.getBillingStartDate(), request.getBillingCycle());
         subscription.setPaymentMethod(request.getPaymentMethod());
@@ -211,6 +223,53 @@ public class SubscriptionService {
                 billingCycle,
                 LocalDate.now(SERVICE_ZONE)
         ));
+    }
+
+    private void applyMoney(Subscription subscription, BigDecimal price, String requestedCurrency) {
+        String currency = resolveCurrency(requestedCurrency);
+        exchangeRateService.validatePriceScale(price, currency);
+        subscription.setPrice(price);
+        subscription.setCurrency(currency);
+    }
+
+    private void applyExchangeConversions(Collection<Subscription> subscriptions) {
+        if (subscriptions == null || subscriptions.isEmpty()) {
+            return;
+        }
+
+        Map<String, ExchangeRateQuote> rateMap = exchangeRateService.getRatesToKrw(
+                subscriptions.stream()
+                        .map(subscription -> resolveCurrency(subscription.getCurrency()))
+                        .collect(Collectors.toSet())
+        );
+
+        for (Subscription subscription : subscriptions) {
+            String currency = resolveCurrency(subscription.getCurrency());
+            subscription.setCurrency(currency);
+            applyExchangeConversion(subscription, rateMap.get(currency));
+        }
+    }
+
+    private void applyExchangeConversion(Subscription subscription) {
+        if (subscription == null) {
+            return;
+        }
+
+        String currency = resolveCurrency(subscription.getCurrency());
+        subscription.setCurrency(currency);
+        ExchangeRateQuote quote = exchangeRateService.getRateToKrw(currency);
+        applyExchangeConversion(subscription, quote);
+    }
+
+    private void applyExchangeConversion(Subscription subscription, ExchangeRateQuote quote) {
+        if (subscription == null || quote == null) {
+            return;
+        }
+
+        ExchangeRateConversion conversion = exchangeRateService.convertToKrw(subscription.getPrice(), quote);
+        subscription.setRateToKrw(conversion.getRateToKrw());
+        subscription.setConvertedPriceKrw(conversion.getConvertedPriceKrw());
+        subscription.setExchangeRateDate(conversion.getExchangeRateDate());
     }
 
     private void createInitialStatusHistories(Subscription subscription, LocalDate requestedEffectiveDate) {
@@ -439,11 +498,11 @@ public class SubscriptionService {
     }
 
     private String resolveCurrency(String currency) {
-        if (!StringUtils.hasText(currency)) {
-            return DEFAULT_CURRENCY;
-        }
-
-        return currency.trim().toUpperCase(Locale.ROOT);
+        String resolvedCurrency = StringUtils.hasText(currency)
+                ? currency.trim().toUpperCase(Locale.ROOT)
+                : DEFAULT_CURRENCY;
+        exchangeRateService.validateSupportedCurrency(resolvedCurrency);
+        return resolvedCurrency;
     }
 
     private String resolveStatus(String status) {

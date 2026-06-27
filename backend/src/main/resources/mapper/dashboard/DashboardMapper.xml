@@ -17,14 +17,17 @@
 
     <resultMap id="DashboardSubscriptionResultMap" type="com.subtrack.domain.dashboard.vo.DashboardSubscription">
         <id property="subscriptionId" column="subscription_id" />
+        <result property="name" column="name" />
         <result property="categoryId" column="category_id" />
         <result property="categoryName" column="category_name" />
         <result property="colorCode" column="color_code" />
         <result property="icon" column="icon" />
         <result property="price" column="price" />
+        <result property="currency" column="currency" />
         <result property="billingCycle" column="billing_cycle" />
         <result property="billingAnchorDay" column="billing_anchor_day" />
         <result property="billingStartDate" column="billing_start_date" />
+        <result property="paymentMethod" column="payment_method" />
         <result property="deletedAt" column="deleted_at" />
     </resultMap>
 
@@ -51,14 +54,17 @@
     <select id="findRecurringDashboardSubscriptions" resultMap="DashboardSubscriptionResultMap">
         SELECT
             s.subscription_id,
+            s.name,
             s.category_id,
             c.name AS category_name,
             c.color_code,
             c.icon,
             s.price,
+            s.currency,
             s.billing_cycle,
             s.billing_anchor_day,
             s.billing_start_date,
+            s.payment_method,
             s.deleted_at
         FROM subscription s
         INNER JOIN subscription_category c ON s.category_id = c.category_id

@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import { formatCurrencyAmount } from "../../../shared/utils/currencyFormat";
 
 export const BILLING_CYCLE_OPTIONS = [
   { value: "MONTHLY", label: "매월" },
@@ -42,13 +43,7 @@ export function getPaymentStatusLabel(value) {
 }
 
 export function formatSubscriptionPrice(price, currency = "KRW") {
-  const numericPrice = Number(price);
-
-  if (Number.isNaN(numericPrice)) {
-    return `${price ?? "-"} ${currency}`;
-  }
-
-  return `${numericPrice.toLocaleString("ko-KR")} ${currency}`;
+  return formatCurrencyAmount(price, currency);
 }
 
 export function formatPaymentDate(date) {

@@ -16,8 +16,8 @@ SubTrack은 단순 가계부가 아니라 반복 결제 관리에 초점을 둔 
 - 다음 결제 예정일 계산
 - D-Day 및 결제 예정 상태 계산
 - 대시보드 집계
-- 결제 완료 이력 관리
-- 중복 결제 완료 방지
+- 다중 통화와 KRW 환산 예상 지출
+- 월별 예상 구독료 흐름 확인
 - 사용자별 데이터 권한 검증
 - 결제 하루 전 알림 자동화
 
@@ -79,19 +79,19 @@ SubTrack은 단순 가계부가 아니라 반복 결제 관리에 초점을 둔 
 - 대시보드 summary
 - 결제 예정 목록
 - 카테고리별 결제 예정액
+- 다중 통화 구독 입력
+- 환율 캐시 기반 KRW 환산
+- 월별 예상 구독료 추이
+- 선택 월 결제 예정 목록
 - Recharts 기반 시각화
 - 반응형 UI
 - Swagger 문서화
 
 ### P1 - 확장 기능
 
-- 결제 이력 관리
-- 결제 완료 처리
-- 결제 완료 중복 방지
-- 다음 결제일 갱신
+- 실제 지출 통계 재검토
 - OneSignal 결제 하루 전 알림
 - 내부 알림 목록
-- 월별 실제 지출 추이
 - 푸시 설정
 - 일부 테스트 코드
 - 배포 또는 배포 가이드
@@ -125,7 +125,8 @@ SubTrack/
  │   ├─ 02_seed_category.sql
  │   ├─ 03_add_billing_start_date.sql
  │   ├─ 04_add_subscription_status_history.sql
- │   └─ 05_update_category_names_ko.sql
+ │   ├─ 05_update_category_names_ko.sql
+ │   └─ 06_add_exchange_rate.sql
  ├─ backend/
  └─ frontend/
 ```
@@ -144,7 +145,8 @@ database/
  ├─ 02_seed_category.sql
  ├─ 03_add_billing_start_date.sql
  ├─ 04_add_subscription_status_history.sql
- └─ 05_update_category_names_ko.sql
+ ├─ 05_update_category_names_ko.sql
+ └─ 06_add_exchange_rate.sql
 ```
 
 배포 또는 시연 단계에서는 외부 MySQL 호스팅이나 AWS RDS MySQL로 datasource 설정만 변경할 수 있도록 구성합니다.
@@ -183,27 +185,29 @@ DUE_TODAY  : 오늘
 
 MVP에서는 실제 결제 완료 여부를 추적하지 않으므로 미납 상태를 판단하지 않습니다.
 
-### 3. 금액과 카테고리
+### 3. 금액, 환율, 카테고리
 
-MVP는 KRW 중심으로 사용하며 다중 통화 환율 변환은 구현하지 않습니다.
+MVP는 `KRW`, `USD`, `JPY`, `CNY`, `EUR` 구독 금액 입력을 지원합니다.
 
-구독 금액은 0 이상의 정수 금액을 허용합니다.
+구독 금액은 사용자가 입력한 원 통화 금액 그대로 저장하고, Dashboard 합계와 차트는 캐시된 환율로 계산한 KRW 환산 금액을 사용합니다.
+
+환율은 백엔드에서 Frankfurter API를 조회해 `exchange_rate` 테이블에 캐시합니다. 같은 날 조회한 환율은 `fetched_at` 기준 캐시를 재사용하고, 외부 API 실패 시 가장 최근 캐시를 fallback으로 사용합니다.
 
 기본 카테고리는 사용자 화면에서 `영상`, `음악`, `클라우드`, `생산성`, `인공지능 도구`, `쇼핑`, `교육`, `금융`, `생활`, `기타`처럼 한글 표시명을 사용합니다.
 
-### 4. 결제 완료 중복 방지
+### 4. Dashboard 예상 지출
 
-결제 완료 API는 중복 클릭 또는 네트워크 재요청에 대비해야 합니다.
+Dashboard는 실제 결제 완료 여부가 아니라 사용자가 등록한 구독 정보 기반의 예상 구독료 흐름을 보여줍니다.
 
-`payment_history` 테이블에 다음 UNIQUE 제약을 둡니다.
+- 선택 월 summary
+- 카테고리별 예상 지출
+- 월별 예상 구독료 추이
+- 선택 월 결제 예정 목록
+- 현재 기준 7일 이내 예정 목록
 
-```sql
-UNIQUE(subscription_id, scheduled_payment_date)
-```
+`payment_history`와 결제 완료 버튼은 MVP 흐름에서 구현하지 않습니다.
 
-동시 요청 상황에서 중복 INSERT가 발생하면 `DataIntegrityViolationException`을 잡아 `409 Conflict`로 응답합니다.
-
-### 4. 소프트 삭제
+### 5. 소프트 삭제
 
 구독 삭제는 물리 삭제가 아니라 `deleted_at`을 세팅하는 방식으로 처리합니다.
 

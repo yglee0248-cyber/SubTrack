@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 import * as yup from "yup";
+import { isIntegerCurrency, isSupportedCurrency } from "../../../shared/utils/currencyFormat";
 
 function emptyStringToUndefined(value, originalValue) {
   return originalValue === "" ? undefined : value;
@@ -11,6 +12,15 @@ function isDateBefore(left, right) {
 
 function isInactiveStatus(status) {
   return status === "PAUSED" || status === "CANCELED";
+}
+
+function countDecimalPlaces(value) {
+  const stringValue = String(value ?? "");
+  if (!stringValue.includes(".")) {
+    return 0;
+  }
+
+  return stringValue.split(".")[1]?.length || 0;
 }
 
 export const subscriptionSchema = yup.object({
@@ -30,13 +40,26 @@ export const subscriptionSchema = yup.object({
     .typeError("금액은 숫자로 입력해주세요.")
     .required("금액을 입력해주세요.")
     .min(0, "금액은 0 이상이어야 합니다.")
-    .integer("금액은 1원 단위 정수로 입력해주세요."),
+    .test("currency-decimal-scale", "통화별 허용 소수 자릿수를 확인해주세요.", function (value) {
+      if (value === undefined || value === null) {
+        return true;
+      }
+
+      const currency = this.parent.currency || "KRW";
+      const decimalPlaces = countDecimalPlaces(this.originalValue);
+
+      if (isIntegerCurrency(currency)) {
+        return decimalPlaces === 0;
+      }
+
+      return decimalPlaces <= 2;
+    }),
   currency: yup
     .string()
     .trim()
     .uppercase()
-    .required("통화 코드를 입력해주세요.")
-    .length(3, "통화 코드는 3자로 입력해주세요."),
+    .required("통화를 선택해주세요.")
+    .test("supported-currency", "지원하지 않는 통화입니다.", (value) => isSupportedCurrency(value)),
   billingCycle: yup
     .string()
     .oneOf(["MONTHLY", "YEARLY"], "결제 주기를 선택해주세요.")

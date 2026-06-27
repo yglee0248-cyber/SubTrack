@@ -29,6 +29,10 @@ onesignal:
   app-id: ${ONESIGNAL_APP_ID:}
   rest-api-key: ${ONESIGNAL_REST_API_KEY:}
 
+exchange-rate:
+  provider: frankfurter
+  base-url: ${EXCHANGE_RATE_BASE_URL:https://api.frankfurter.dev}
+
 scheduler:
   payment-reminder:
     enabled: ${PAYMENT_REMINDER_ENABLED:true}

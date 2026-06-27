@@ -52,6 +52,9 @@ public class SubscriptionListResponse {
         private final String categoryName;
         private final BigDecimal price;
         private final String currency;
+        private final BigDecimal rateToKrw;
+        private final BigDecimal convertedPriceKrw;
+        private final LocalDate exchangeRateDate;
         private final String billingCycle;
         private final LocalDate billingStartDate;
         private final Integer billingAnchorDay;
@@ -68,6 +71,9 @@ public class SubscriptionListResponse {
                 String categoryName,
                 BigDecimal price,
                 String currency,
+                BigDecimal rateToKrw,
+                BigDecimal convertedPriceKrw,
+                LocalDate exchangeRateDate,
                 String billingCycle,
                 LocalDate billingStartDate,
                 Integer billingAnchorDay,
@@ -83,6 +89,9 @@ public class SubscriptionListResponse {
             this.categoryName = categoryName;
             this.price = price;
             this.currency = currency;
+            this.rateToKrw = rateToKrw;
+            this.convertedPriceKrw = convertedPriceKrw;
+            this.exchangeRateDate = exchangeRateDate;
             this.billingCycle = billingCycle;
             this.billingStartDate = billingStartDate;
             this.billingAnchorDay = billingAnchorDay;
@@ -101,6 +110,9 @@ public class SubscriptionListResponse {
                     subscription.getCategoryName(),
                     subscription.getPrice(),
                     subscription.getCurrency(),
+                    subscription.getRateToKrw(),
+                    subscription.getConvertedPriceKrw(),
+                    subscription.getExchangeRateDate(),
                     subscription.getBillingCycle(),
                     subscription.getBillingStartDate(),
                     subscription.getBillingAnchorDay(),
@@ -134,6 +146,18 @@ public class SubscriptionListResponse {
 
         public String getCurrency() {
             return currency;
+        }
+
+        public BigDecimal getRateToKrw() {
+            return rateToKrw;
+        }
+
+        public BigDecimal getConvertedPriceKrw() {
+            return convertedPriceKrw;
+        }
+
+        public LocalDate getExchangeRateDate() {
+            return exchangeRateDate;
         }
 
         public String getBillingCycle() {

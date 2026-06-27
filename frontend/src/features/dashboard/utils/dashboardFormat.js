@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import { formatKrwAmount } from "../../../shared/utils/currencyFormat";
 
 const paymentStatusLabelMap = {
   UPCOMING: "예정",
@@ -19,9 +20,8 @@ export function formatYearMonthLabel(yearMonth) {
   return parsed.isValid() ? parsed.format("YYYY년 M월") : yearMonth;
 }
 
-export function formatDashboardAmount(amount, currency = "KRW") {
-  const numericAmount = Number(amount || 0);
-  return `${numericAmount.toLocaleString("ko-KR")} ${currency}`;
+export function formatDashboardAmount(amount) {
+  return formatKrwAmount(amount);
 }
 
 export function formatDashboardCount(count, unit = "개") {

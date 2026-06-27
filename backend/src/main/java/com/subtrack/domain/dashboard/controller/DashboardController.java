@@ -2,6 +2,8 @@ package com.subtrack.domain.dashboard.controller;
 
 import com.subtrack.domain.dashboard.dto.CategoryExpenseResponse;
 import com.subtrack.domain.dashboard.dto.DashboardSummaryResponse;
+import com.subtrack.domain.dashboard.dto.MonthlyExpenseTrendResponse;
+import com.subtrack.domain.dashboard.dto.MonthlyScheduleResponse;
 import com.subtrack.domain.dashboard.dto.UpcomingSubscriptionResponse;
 import com.subtrack.domain.dashboard.service.DashboardService;
 import com.subtrack.global.exception.BusinessException;
@@ -45,6 +47,21 @@ public class DashboardController {
             @RequestParam(required = false) String yearMonth
     ) {
         return ApiResponse.success(dashboardService.getCategoryExpenses(getCurrentMemberId(), yearMonth));
+    }
+
+    @GetMapping("/monthly-expenses")
+    public ApiResponse<MonthlyExpenseTrendResponse> getMonthlyExpenses(
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to
+    ) {
+        return ApiResponse.success(dashboardService.getMonthlyExpenses(getCurrentMemberId(), from, to));
+    }
+
+    @GetMapping("/monthly-schedule")
+    public ApiResponse<MonthlyScheduleResponse> getMonthlySchedule(
+            @RequestParam(required = false) String yearMonth
+    ) {
+        return ApiResponse.success(dashboardService.getMonthlySchedule(getCurrentMemberId(), yearMonth));
     }
 
     private Long getCurrentMemberId() {
