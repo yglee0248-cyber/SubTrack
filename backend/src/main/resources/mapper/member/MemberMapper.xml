@@ -83,4 +83,12 @@
           AND deleted_at IS NULL
     </update>
 
+    <update id="updatePasswordHash">
+        UPDATE `member`
+        SET password_hash = #{passwordHash}
+        WHERE member_id = #{memberId}
+          AND status = 'ACTIVE'
+          AND deleted_at IS NULL
+    </update>
+
 </mapper>

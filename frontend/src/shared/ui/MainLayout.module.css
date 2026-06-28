@@ -1,90 +1,226 @@
 .appShell {
   min-height: 100vh;
-  background: #f7f8fb;
 }
 
 .header {
   position: sticky;
   top: 0;
-  z-index: 10;
-  border-bottom: 1px solid #dfe3ea;
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(8px);
+  z-index: 20;
+  height: var(--header-height);
+  border-bottom: 1px solid var(--color-border-soft);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(12px);
 }
 
-.navInner {
+.headerInner {
   display: flex;
-  min-height: 64px;
+  width: 100%;
+  max-width: var(--container-app);
+  height: var(--header-height);
   align-items: center;
   gap: 24px;
+  margin: 0 auto;
+  padding: 0 24px;
 }
 
 .brand {
-  color: #162033;
-  font-size: 20px;
-  font-weight: 800;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-text);
   text-decoration: none;
 }
 
-.navLinks {
+.brandMark {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.brandText {
+  font-size: 20px;
+  font-weight: 850;
+  letter-spacing: 0;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.appNav {
   display: flex;
-  flex: 1;
-  flex-wrap: wrap;
-  gap: 12px;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
 }
 
 .navLink {
-  color: #566176;
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  border-radius: 999px;
+  color: var(--color-muted);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0 12px;
   text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease;
 }
 
 .navLink:hover {
-  color: #1f5eff;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
 }
 
-.authArea {
+.activeNavLink {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.accountArea,
+.authActions {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 10px;
   margin-left: auto;
 }
 
-.nickname {
-  max-width: 120px;
+.userName {
+  max-width: 140px;
   overflow: hidden;
-  color: #566176;
-  font-size: 14px;
-  font-weight: 600;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: var(--color-text-soft);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 8px 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.main {
-  padding: 40px 0;
+.logoutButton,
+.authLink {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--color-text-soft);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0 14px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    color 0.16s ease;
 }
 
-@media (max-width: 720px) {
-  .navInner {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 14px;
-    padding-bottom: 14px;
-    padding-top: 14px;
+.logoutButton:hover,
+.authLink:hover {
+  border-color: rgba(37, 99, 235, 0.26);
+  background: #f8fbff;
+  color: var(--color-primary);
+}
+
+.primaryAuthLink {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.primaryAuthLink:hover {
+  border-color: var(--color-primary-dark);
+  background: var(--color-primary-dark);
+  color: #ffffff;
+}
+
+.main {
+  padding: 32px 0 56px;
+}
+
+.mainInner {
+  width: 100%;
+  max-width: var(--container-app);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+@media (max-width: 768px) {
+  .header {
+    height: auto;
+    min-height: var(--header-height);
   }
 
-  .navLinks,
-  .authArea {
+  .headerInner {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: var(--header-height);
+    gap: 10px 14px;
+    padding-bottom: 12px;
+    padding-top: 12px;
+  }
+
+  .appNav {
+    order: 3;
     width: 100%;
+    overflow-x: auto;
+    padding-bottom: 2px;
   }
 
-  .authArea {
-    justify-content: flex-start;
-    margin-left: 0;
+  .accountArea,
+  .authActions {
+    margin-left: auto;
+  }
+
+  .userName {
+    max-width: 108px;
   }
 
   .main {
-    padding: 24px 0;
+    padding: 24px 0 42px;
+  }
+}
+
+@media (max-width: 420px) {
+  .headerInner,
+  .mainInner {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .brandText {
+    font-size: 18px;
+  }
+
+  .brandMark {
+    width: 32px;
+    height: 32px;
+  }
+
+  .logoutButton,
+  .authLink {
+    min-height: 34px;
+    padding: 0 11px;
   }
 }

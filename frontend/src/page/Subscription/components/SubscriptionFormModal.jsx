@@ -8,6 +8,7 @@ import {
   DialogTitle,
   Stack,
   TextField,
+  Typography,
 } from "@mui/material";
 import dayjs from "dayjs";
 import { useEffect } from "react";
@@ -168,127 +169,141 @@ export function SubscriptionFormModal({
       open={open}
       onClose={disabled ? undefined : onClose}
       fullWidth
-      maxWidth="sm"
+      maxWidth={false}
       scroll="paper"
       PaperProps={{
         className: styles.dialogPaper,
         sx: {
           maxHeight: { xs: "calc(100dvh - 24px)", sm: "calc(100dvh - 32px)" },
           margin: { xs: "12px", sm: "32px" },
+          maxWidth: { xs: "calc(100% - 24px)", sm: "680px" },
           overflow: "hidden",
-          width: { xs: "calc(100% - 24px)", sm: "calc(100% - 64px)" },
+          width: { xs: "calc(100% - 24px)", sm: "680px" },
         },
       }}
     >
-      <DialogTitle>{title}</DialogTitle>
+      <DialogTitle className={styles.dialogTitle}>{title}</DialogTitle>
       <form onSubmit={handleSubmit(submitForm)} data-testid="subscription-form">
         <DialogContent className={styles.dialogContent}>
-          <Stack spacing={2}>
+          <Stack spacing={1.5}>
             {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
             {isInitialLoading && <Alert severity="info">구독 정보를 불러오는 중입니다.</Alert>}
 
-            <TextField
-              select
-              label="카테고리"
-              SelectProps={{ native: true }}
-              InputLabelProps={{ shrink: true }}
-              inputProps={{ "data-testid": "subscription-category-select" }}
-              fullWidth
-              disabled={disabled}
-              error={Boolean(errors.categoryId)}
-              helperText={errors.categoryId?.message}
-              {...register("categoryId")}
-            >
-              <option value="">선택해주세요</option>
-              {categories.map((category) => (
-                <option key={category.categoryId} value={category.categoryId}>
-                  {category.name}
-                </option>
-              ))}
-            </TextField>
-
-            <TextField
-              label="구독 이름"
-              fullWidth
-              disabled={disabled}
-              InputLabelProps={{ shrink: true }}
-              inputProps={{ "data-testid": "subscription-name-input" }}
-              error={Boolean(errors.name)}
-              helperText={errors.name?.message}
-              {...register("name")}
-            />
-
-            <div className={styles.formGrid}>
-              <TextField
-                label="금액"
-                type="number"
-                fullWidth
-                disabled={disabled}
-                InputLabelProps={{ shrink: true }}
-                inputProps={{
-                  min: 0,
-                  step: getCurrencyAmountStep(selectedCurrency),
-                  "data-testid": "subscription-price-input",
-                }}
-                error={Boolean(errors.price)}
-                helperText={errors.price?.message || getCurrencyHelperText(selectedCurrency)}
-                {...register("price")}
-              />
-
+            <section className={styles.formSection}>
+              <Typography variant="subtitle2" className={styles.formSectionTitle}>
+                기본 정보
+              </Typography>
               <TextField
                 select
-                label="통화"
-                fullWidth
-                disabled={disabled}
+                label="카테고리"
                 SelectProps={{ native: true }}
                 InputLabelProps={{ shrink: true }}
-                inputProps={{ "data-testid": "subscription-currency-input" }}
-                error={Boolean(errors.currency)}
-                helperText={errors.currency?.message}
-                {...register("currency")}
-              >
-                {CURRENCY_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </TextField>
-            </div>
-
-            <div className={styles.formGrid}>
-              <TextField
-                select
-                label="결제 주기"
-                SelectProps={{ native: true }}
-                InputLabelProps={{ shrink: true }}
-                inputProps={{ "data-testid": "subscription-billing-cycle-select" }}
+                inputProps={{ "data-testid": "subscription-category-select" }}
                 fullWidth
                 disabled={disabled}
-                error={Boolean(errors.billingCycle)}
-                helperText={errors.billingCycle?.message}
-                {...register("billingCycle")}
+                error={Boolean(errors.categoryId)}
+                helperText={errors.categoryId?.message}
+                {...register("categoryId")}
               >
-                {BILLING_CYCLE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
+                <option value="">선택해주세요</option>
+                {categories.map((category) => (
+                  <option key={category.categoryId} value={category.categoryId}>
+                    {category.name}
                   </option>
                 ))}
               </TextField>
 
               <TextField
-                label="구독 시작일 / 첫 결제일"
-                type="date"
+                label="구독 이름"
                 fullWidth
                 disabled={disabled}
                 InputLabelProps={{ shrink: true }}
-                inputProps={{ "data-testid": "subscription-billing-start-date-input" }}
-                error={Boolean(errors.billingStartDate)}
-                helperText={errors.billingStartDate?.message}
-                {...register("billingStartDate")}
+                inputProps={{ "data-testid": "subscription-name-input" }}
+                error={Boolean(errors.name)}
+                helperText={errors.name?.message}
+                {...register("name")}
               />
-            </div>
+            </section>
 
-            <div className={styles.formGrid}>
+            <section className={styles.formSection}>
+              <Typography variant="subtitle2" className={styles.formSectionTitle}>
+                금액과 통화
+              </Typography>
+              <div className={styles.formGrid}>
+                <TextField
+                  label="금액"
+                  type="number"
+                  fullWidth
+                  disabled={disabled}
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{
+                    min: 0,
+                    step: getCurrencyAmountStep(selectedCurrency),
+                    "data-testid": "subscription-price-input",
+                  }}
+                  error={Boolean(errors.price)}
+                  helperText={errors.price?.message || getCurrencyHelperText(selectedCurrency)}
+                  {...register("price")}
+                />
+
+                <TextField
+                  select
+                  label="통화"
+                  fullWidth
+                  disabled={disabled}
+                  SelectProps={{ native: true }}
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ "data-testid": "subscription-currency-input" }}
+                  error={Boolean(errors.currency)}
+                  helperText={errors.currency?.message || "외화는 Dashboard에서 KRW로 환산됩니다."}
+                  {...register("currency")}
+                >
+                  {CURRENCY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </TextField>
+              </div>
+            </section>
+
+            <section className={styles.formSection}>
+              <Typography variant="subtitle2" className={styles.formSectionTitle}>
+                결제 기준
+              </Typography>
+              <div className={styles.formGrid}>
+                <TextField
+                  select
+                  label="결제 주기"
+                  SelectProps={{ native: true }}
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ "data-testid": "subscription-billing-cycle-select" }}
+                  fullWidth
+                  disabled={disabled}
+                  error={Boolean(errors.billingCycle)}
+                  helperText={errors.billingCycle?.message}
+                  {...register("billingCycle")}
+                >
+                  {BILLING_CYCLE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </TextField>
+
+                <TextField
+                  label="구독 시작일 / 첫 결제일"
+                  type="date"
+                  fullWidth
+                  disabled={disabled}
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ "data-testid": "subscription-billing-start-date-input" }}
+                  error={Boolean(errors.billingStartDate)}
+                  helperText={errors.billingStartDate?.message}
+                  {...register("billingStartDate")}
+                />
+              </div>
+
               <TextField
                 label="결제 수단"
                 fullWidth
@@ -299,7 +314,12 @@ export function SubscriptionFormModal({
                 helperText={errors.paymentMethod?.message}
                 {...register("paymentMethod")}
               />
+            </section>
 
+            <section className={styles.formSection}>
+              <Typography variant="subtitle2" className={styles.formSectionTitle}>
+                상태 관리
+              </Typography>
               <TextField
                 select
                 label="구독 상태"
@@ -318,37 +338,42 @@ export function SubscriptionFormModal({
                   </option>
                 ))}
               </TextField>
-            </div>
 
-            {shouldShowStatusEffectiveDate && (
+              {shouldShowStatusEffectiveDate && (
+                <TextField
+                  label={statusEffectiveDateLabel}
+                  type="date"
+                  fullWidth
+                  disabled={disabled}
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ "data-testid": "subscription-status-effective-date-input" }}
+                  error={Boolean(errors.statusEffectiveDate)}
+                  helperText={
+                    errors.statusEffectiveDate?.message ||
+                    statusEffectiveDateHelperText
+                  }
+                  {...register("statusEffectiveDate")}
+                />
+              )}
+            </section>
+
+            <section className={styles.formSection}>
+              <Typography variant="subtitle2" className={styles.formSectionTitle}>
+                메모
+              </Typography>
               <TextField
-                label={statusEffectiveDateLabel}
-                type="date"
+                label="메모"
                 fullWidth
+                multiline
+                minRows={3}
                 disabled={disabled}
                 InputLabelProps={{ shrink: true }}
-                inputProps={{ "data-testid": "subscription-status-effective-date-input" }}
-                error={Boolean(errors.statusEffectiveDate)}
-                helperText={
-                  errors.statusEffectiveDate?.message ||
-                  statusEffectiveDateHelperText
-                }
-                {...register("statusEffectiveDate")}
+                inputProps={{ maxLength: 500, "data-testid": "subscription-memo-input" }}
+                error={Boolean(errors.memo)}
+                helperText={errors.memo?.message || "최대 500자"}
+                {...register("memo")}
               />
-            )}
-
-            <TextField
-              label="메모"
-              fullWidth
-              multiline
-              minRows={3}
-              disabled={disabled}
-              InputLabelProps={{ shrink: true }}
-              inputProps={{ maxLength: 500, "data-testid": "subscription-memo-input" }}
-              error={Boolean(errors.memo)}
-              helperText={errors.memo?.message || "최대 500자"}
-              {...register("memo")}
-            />
+            </section>
           </Stack>
         </DialogContent>
 

@@ -204,6 +204,7 @@ function SubscriptionListPage() {
     <section className={styles.page}>
       <div className={styles.pageHeader}>
         <div>
+          <span className={styles.headerBadge}>구독 관리</span>
           <Typography variant="h4" component="h1" className={styles.title}>
             구독 관리
           </Typography>

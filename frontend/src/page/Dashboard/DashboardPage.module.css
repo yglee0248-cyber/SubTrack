@@ -1,6 +1,6 @@
 .page {
   display: grid;
-  gap: 22px;
+  gap: 20px;
   width: 100%;
 }
 
@@ -9,62 +9,92 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
-  border: 1px solid #dfe3ea;
-  border-radius: 8px;
-  background: #ffffff;
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+  position: relative;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
   padding: 24px;
-  box-shadow: 0 10px 28px rgba(22, 32, 51, 0.05);
+  box-shadow: var(--shadow-card);
+}
+
+.headerPanel::after {
+  content: none;
 }
 
 .headerText {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.headerBadge {
+  width: fit-content;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 850;
+  padding: 5px 10px;
 }
 
 .title {
-  font-weight: 800;
+  color: var(--color-text);
+  font-weight: 900;
   letter-spacing: 0;
+  word-break: keep-all;
 }
 
 .description {
-  color: #566176;
-}
-
-.monthCaption {
-  color: #7a8699;
+  color: var(--color-muted);
 }
 
 .monthField {
   width: 210px;
   flex: 0 0 auto;
+  position: relative;
+  z-index: 1;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .stateBox {
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 .summaryGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  gap: 14px;
 }
 
 .summaryCard {
   display: grid;
-  gap: 10px;
+  gap: 9px;
   min-width: 0;
-  border: 1px solid #dfe3ea;
-  border-radius: 8px;
-  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  min-height: 118px;
   padding: 18px;
-  box-shadow: 0 10px 28px rgba(22, 32, 51, 0.05);
+  box-shadow: var(--shadow-soft);
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.summaryCard:hover {
+  border-color: rgba(37, 99, 235, 0.18);
 }
 
 .summaryCard::before {
   display: block;
-  width: 34px;
-  height: 4px;
+  width: 28px;
+  height: 3px;
   border-radius: 999px;
   content: "";
 }
@@ -86,8 +116,9 @@
 }
 
 .summaryLabel {
-  color: #667085;
-  font-weight: 700;
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 850;
 }
 
 .summaryValueRow {
@@ -98,14 +129,15 @@
 
 .summaryValue {
   overflow-wrap: anywhere;
-  color: #162033;
-  font-weight: 850;
+  color: var(--color-text);
+  font-weight: 950;
   line-height: 1.2;
 }
 
 .summaryHelper {
-  color: #7a8699;
+  color: var(--color-subtle);
   font-weight: 600;
+  line-height: 1.45;
 }
 
 .contentGrid {
@@ -117,13 +149,13 @@
 
 .panel {
   display: grid;
-  gap: 18px;
+  gap: 16px;
   min-width: 0;
-  border: 1px solid #dfe3ea;
-  border-radius: 8px;
-  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
   padding: 20px;
-  box-shadow: 0 10px 28px rgba(22, 32, 51, 0.05);
+  box-shadow: var(--shadow-card);
 }
 
 .widePanel {
@@ -138,21 +170,22 @@
 }
 
 .sectionTitle {
-  color: #162033;
-  font-weight: 800;
+  color: var(--color-text);
+  font-weight: 850;
   letter-spacing: 0;
+  word-break: keep-all;
 }
 
 .sectionDescription {
   margin-top: 4px;
-  color: #667085;
+  color: var(--color-muted);
 }
 
 .fetchingText {
   flex: 0 0 auto;
   border-radius: 999px;
   background: #eef4ff;
-  color: #2454d6;
+  color: var(--color-primary);
   padding: 5px 10px;
   font-size: 12px;
   font-weight: 800;
@@ -166,9 +199,9 @@
   gap: 12px;
   min-height: 220px;
   border: 1px dashed #c8ced9;
-  border-radius: 8px;
-  background: #fbfcff;
-  color: #667085;
+  border-radius: var(--radius-card);
+  background: var(--color-surface-muted);
+  color: var(--color-muted);
 }
 
 .emptyState {
@@ -177,20 +210,20 @@
   gap: 8px;
   min-height: 220px;
   border: 1px dashed #c8ced9;
-  border-radius: 8px;
-  background: #fbfcff;
+  border-radius: var(--radius-card);
+  background: var(--color-surface-muted);
   padding: 34px 18px;
   text-align: center;
 }
 
 .emptyTitle {
-  color: #273247;
+  color: var(--color-text);
   font-weight: 800;
 }
 
 .emptyDescription {
   max-width: 360px;
-  color: #667085;
+  color: var(--color-muted);
 }
 
 .upcomingList,
@@ -208,10 +241,10 @@
   justify-content: space-between;
   gap: 14px;
   min-width: 0;
-  border: 1px solid #edf0f5;
-  border-radius: 8px;
-  background: #fbfcff;
-  padding: 14px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #ffffff, var(--color-surface-muted));
+  padding: 13px;
 }
 
 .upcomingMain {
@@ -231,17 +264,17 @@
 .upcomingName {
   min-width: 0;
   overflow-wrap: anywhere;
-  color: #162033;
+  color: var(--color-text);
   font-weight: 800;
 }
 
 .upcomingMeta {
-  color: #667085;
+  color: var(--color-muted);
 }
 
 .upcomingAmount {
   flex: 0 0 auto;
-  color: #273247;
+  color: var(--color-text);
   font-weight: 850;
   white-space: nowrap;
 }
@@ -260,7 +293,7 @@
 
 .badge_normal {
   background: #eef4ff;
-  color: #2454d6;
+  color: var(--color-primary);
 }
 
 .badge_warning {
@@ -286,7 +319,7 @@
 
 .trendChartBox {
   min-width: 0;
-  height: 300px;
+  height: 260px;
 }
 
 .scheduleList {
@@ -303,17 +336,54 @@
   gap: 14px;
   align-items: center;
   min-width: 0;
-  border: 1px solid #edf0f5;
-  border-radius: 8px;
-  background: #fbfcff;
-  padding: 14px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #ffffff, var(--color-surface-muted));
+  padding: 13px;
 }
 
 .scheduleDate {
-  color: #2454d6;
+  width: fit-content;
+  border-radius: 999px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
   font-size: 13px;
   font-weight: 850;
+  padding: 7px 10px;
   white-space: nowrap;
+}
+
+.panelActionRow {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--color-border-soft);
+  padding-top: 12px;
+}
+
+.analyticsPanel {
+  gap: 0;
+}
+
+.analyticsSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.analyticsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  gap: 18px;
+  margin-top: 18px;
+  border-top: 1px solid var(--color-border-soft);
+  padding-top: 18px;
+}
+
+.analyticsCard {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
 }
 
 .scheduleMain {
@@ -325,20 +395,20 @@
 .scheduleName {
   min-width: 0;
   overflow-wrap: anywhere;
-  color: #162033;
+  color: var(--color-text);
   font-weight: 850;
 }
 
 .scheduleMeta {
   min-width: 0;
   overflow: hidden;
-  color: #667085;
+  color: var(--color-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .scheduleAmount {
-  color: #273247;
+  color: var(--color-text);
   font-weight: 850;
   text-align: right;
   white-space: nowrap;
@@ -350,8 +420,8 @@
   gap: 10px;
   align-items: center;
   min-width: 0;
-  border-top: 1px solid #edf0f5;
-  padding-top: 10px;
+  border-top: 1px solid var(--color-border-soft);
+  padding-top: 12px;
 }
 
 .categorySwatch {
@@ -392,12 +462,17 @@
   .contentGrid {
     grid-template-columns: 1fr;
   }
+
+  .analyticsGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
   .headerPanel,
   .sectionHeader,
-  .upcomingItem {
+  .upcomingItem,
+  .analyticsSummary {
     flex-direction: column;
     align-items: stretch;
   }
@@ -412,7 +487,7 @@
 
   .panel,
   .headerPanel {
-    padding: 18px;
+    padding: 20px;
   }
 
   .upcomingAmount {

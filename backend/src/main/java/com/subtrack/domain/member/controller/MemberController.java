@@ -3,6 +3,9 @@ package com.subtrack.domain.member.controller;
 import com.subtrack.domain.member.dto.MemberMeResponse;
 import com.subtrack.domain.member.dto.NicknameUpdateRequest;
 import com.subtrack.domain.member.dto.NicknameUpdateResponse;
+import com.subtrack.domain.member.dto.PasswordChangeRequest;
+import com.subtrack.domain.member.dto.PasswordChangeResponse;
+import com.subtrack.domain.member.dto.ProfileUpdateRequest;
 import com.subtrack.domain.member.service.MemberService;
 import com.subtrack.global.exception.BusinessException;
 import com.subtrack.global.exception.ErrorCode;
@@ -37,6 +40,20 @@ public class MemberController {
             @Valid @RequestBody NicknameUpdateRequest request
     ) {
         return ApiResponse.success(memberService.updateNickname(getCurrentMemberId(), request));
+    }
+
+    @PatchMapping("/me/profile")
+    public ApiResponse<MemberMeResponse> updateProfile(
+            @Valid @RequestBody ProfileUpdateRequest request
+    ) {
+        return ApiResponse.success(memberService.updateProfile(getCurrentMemberId(), request));
+    }
+
+    @PatchMapping("/me/password")
+    public ApiResponse<PasswordChangeResponse> changePassword(
+            @Valid @RequestBody PasswordChangeRequest request
+    ) {
+        return ApiResponse.success(memberService.changePassword(getCurrentMemberId(), request));
     }
 
     private Long getCurrentMemberId() {

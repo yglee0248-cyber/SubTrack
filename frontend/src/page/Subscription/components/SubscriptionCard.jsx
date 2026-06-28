@@ -7,8 +7,27 @@ import {
   getStatusTone,
   getSubscriptionStatusLabel,
 } from "../../../features/subscription/utils/subscriptionLabel";
-import { formatOriginalAndKrwAmount } from "../../../shared/utils/currencyFormat";
+import { formatCurrencyAmount, formatKrwAmount } from "../../../shared/utils/currencyFormat";
 import styles from "../SubscriptionListPage.module.css";
+
+function renderAmount(subscription) {
+  const currency = subscription.currency || "KRW";
+
+  if (currency === "KRW") {
+    return <span className={styles.krwAmount}>{formatKrwAmount(subscription.price)}</span>;
+  }
+
+  return (
+    <span className={styles.amountValue}>
+      <span className={styles.originalAmount}>{formatCurrencyAmount(subscription.price, currency)}</span>
+      <span className={styles.convertedAmount}>
+        {subscription.convertedPriceKrw === null || subscription.convertedPriceKrw === undefined
+          ? "환산 불가"
+          : `약 ${formatKrwAmount(subscription.convertedPriceKrw)}`}
+      </span>
+    </span>
+  );
+}
 
 export function SubscriptionCard({ subscription, category, onEdit, onDelete, isDeleting }) {
   const statusTone = getStatusTone(subscription.status);
@@ -42,17 +61,20 @@ export function SubscriptionCard({ subscription, category, onEdit, onDelete, isD
         </div>
       </div>
 
-      <dl className={styles.cardMeta}>
+      <div className={styles.cardFocus}>
         <div>
-          <dt>금액</dt>
-          <dd>
-            {formatOriginalAndKrwAmount(
-              subscription.price,
-              subscription.currency,
-              subscription.convertedPriceKrw
-            )}
-          </dd>
+          <span className={styles.focusLabel}>구독 금액</span>
+          <strong className={styles.focusAmount}>{renderAmount(subscription)}</strong>
         </div>
+        <div>
+          <span className={styles.focusLabel}>{isActive ? "다음 결제일" : statusDateLabel}</span>
+          <strong className={styles.focusDate}>
+            {formatPaymentDate(isActive ? subscription.nextPaymentDate : subscription.statusEffectiveDate)}
+          </strong>
+        </div>
+      </div>
+
+      <dl className={styles.cardMeta}>
         <div>
           <dt>주기</dt>
           <dd>{getBillingCycleLabel(subscription.billingCycle)}</dd>
@@ -60,10 +82,6 @@ export function SubscriptionCard({ subscription, category, onEdit, onDelete, isD
         <div>
           <dt>구독 시작일</dt>
           <dd>{formatPaymentDate(subscription.billingStartDate || subscription.nextPaymentDate)}</dd>
-        </div>
-        <div>
-          <dt>{isActive ? "다음 결제일" : statusDateLabel}</dt>
-          <dd>{formatPaymentDate(isActive ? subscription.nextPaymentDate : subscription.statusEffectiveDate)}</dd>
         </div>
         <div>
           <dt>결제 수단</dt>

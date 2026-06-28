@@ -16,4 +16,6 @@ public interface MemberDao {
     int insertMember(Member member);
 
     int updateNickname(@Param("memberId") Long memberId, @Param("nickname") String nickname);
+
+    int updatePasswordHash(@Param("memberId") Long memberId, @Param("passwordHash") String passwordHash);
 }

@@ -180,6 +180,68 @@ MVP에서는 서버에서 토큰 블랙리스트를 관리하지 않습니다.
 
 ---
 
+## PATCH /api/members/me/profile
+
+My Page 프로필 수정 API입니다. 이메일은 로그인 식별자로만 표시하며 수정하지 않습니다.
+
+범위: P0
+
+### Request
+
+```json
+{
+  "nickname": "youngmin"
+}
+```
+
+### Response data
+
+```json
+{
+  "memberId": 1,
+  "email": "user@example.com",
+  "nickname": "youngmin",
+  "pushEnabled": false,
+  "createdAt": "2026-06-15T10:00:00"
+}
+```
+
+---
+
+## PATCH /api/members/me/password
+
+My Page 비밀번호 변경 API입니다.
+
+범위: P0
+
+### Request
+
+```json
+{
+  "currentPassword": "oldPassword123!",
+  "newPassword": "newPassword123!",
+  "confirmPassword": "newPassword123!"
+}
+```
+
+### Response data
+
+```json
+{
+  "changed": true
+}
+```
+
+### 정책
+
+- JWT 인증된 본인 계정만 변경합니다.
+- 현재 비밀번호를 BCrypt로 검증합니다.
+- 새 비밀번호와 확인 값이 일치해야 합니다.
+- 비밀번호는 응답이나 로그에 노출하지 않습니다.
+- 토큰 재발급은 필수로 처리하지 않습니다.
+
+---
+
 ## PATCH /api/members/me/push-setting
 
 푸시 설정 변경 API입니다.
