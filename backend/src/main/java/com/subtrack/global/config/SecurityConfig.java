@@ -12,6 +12,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -28,6 +29,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    private static final String DEFAULT_ALLOWED_ORIGIN = "http://localhost:5173";
+    private static final String WILDCARD_ORIGIN = "*";
 
     private static final String[] PERMIT_PATHS = {
             "/api/health",
@@ -65,6 +69,7 @@ public class SecurityConfig {
                         .accessDeniedHandler((request, response, ex) ->
                                 writeErrorResponse(response, ErrorCode.FORBIDDEN)))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(PERMIT_PATHS).permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -91,10 +96,21 @@ public class SecurityConfig {
     }
 
     private List<String> parseAllowedOrigins() {
-        return Arrays.stream(allowedOrigins.split(","))
+        List<String> origins = Arrays.stream((allowedOrigins == null ? "" : allowedOrigins).split(","))
                 .map(String::trim)
                 .filter(origin -> !origin.isBlank())
+                .distinct()
                 .toList();
+
+        if (origins.contains(WILDCARD_ORIGIN)) {
+            throw new IllegalStateException("CORS allowed origins must not contain '*'.");
+        }
+
+        if (origins.isEmpty()) {
+            return List.of(DEFAULT_ALLOWED_ORIGIN);
+        }
+
+        return origins;
     }
 
     private void writeErrorResponse(HttpServletResponse response, ErrorCode errorCode) throws IOException {

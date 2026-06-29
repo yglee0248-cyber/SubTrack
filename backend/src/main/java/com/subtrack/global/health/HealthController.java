@@ -10,7 +10,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class HealthController {
 
     @GetMapping
-    public ApiResponse<String> health() {
-        return ApiResponse.success("SubTrack backend is running");
+    public ApiResponse<HealthStatusResponse> health() {
+        return ApiResponse.success("OK", new HealthStatusResponse("UP"));
+    }
+
+    public static class HealthStatusResponse {
+
+        private final String status;
+
+        public HealthStatusResponse(String status) {
+            this.status = status;
+        }
+
+        public String getStatus() {
+            return status;
+        }
     }
 }
