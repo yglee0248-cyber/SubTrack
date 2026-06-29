@@ -18,9 +18,8 @@ DB_USERNAME=root
 DB_PASSWORD=password
 JWT_SECRET=local-development-secret-key-change-later
 JWT_ACCESS_TOKEN_EXPIRATION_MS=3600000
-ONESIGNAL_APP_ID=
-ONESIGNAL_REST_API_KEY=
 CORS_ALLOWED_ORIGINS=http://localhost:5173
+EXCHANGE_RATE_BASE_URL=https://api.frankfurter.dev
 ```
 
 Spring Boot also has the same local defaults in `backend/src/main/resources/application.yml`, so the backend can run locally without creating a real `.env` file.
@@ -62,6 +61,8 @@ Run the category seed SQL manually from the project root.
 ```powershell
 Get-Content .\database\02_seed_category.sql | docker exec -i subtrack-mysql mysql -uroot -ppassword subtrack
 ```
+
+For a fresh local database, `01_schema.sql` already contains the current schema. The numbered SQL files from `03_*` onward are manual migrations for an older local database that you want to keep.
 
 ## 5. Build Backend
 
@@ -111,7 +112,35 @@ Expected response:
 }
 ```
 
-## 8. Stop MySQL
+## 8. Run Frontend
+
+Create the frontend env file if needed.
+
+```powershell
+Copy-Item .\frontend\.env.example .\frontend\.env
+```
+
+Run the Vite app.
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend runs on:
+
+```txt
+http://localhost:5173
+```
+
+Build check:
+
+```powershell
+cmd /c npm run build
+```
+
+## 9. Stop MySQL
 
 Stop the container.
 

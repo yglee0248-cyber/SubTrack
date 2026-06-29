@@ -18,7 +18,7 @@ SubTrack은 다음 순서로 개발합니다.
 12. 구독 목록 / 등록 / 수정 / 상세 화면
 13. 대시보드 화면
 14. 다중 통화 / 환율 캐시 / KRW 환산 Dashboard
-15. P1 알림 / 테스트
+15. 문서 / 빌드 정리, P1 알림 후보 검토
 
 ---
 
@@ -37,8 +37,6 @@ backend/
      ├─ global/
      │   ├─ config/
      │   │   ├─ SecurityConfig.java
-     │   │   ├─ CorsConfig.java
-     │   │   ├─ SwaggerConfig.java
      │   │   └─ MyBatisConfig.java
      │   ├─ security/
      │   │   ├─ JwtTokenProvider.java
@@ -68,10 +66,8 @@ backend/
          │   └─ vo/
          ├─ category/
          ├─ subscription/
-         ├─ exchange/
          ├─ dashboard/
-         ├─ notification/
-         └─ push/
+         └─ exchange/
 ```
 
 ---
@@ -97,8 +93,6 @@ SubscriptionDao
 SubscriptionStatusHistoryDao
 ExchangeRateDao
 DashboardDao
-NotificationDao
-PushLogDao
 ```
 
 ---
@@ -126,15 +120,6 @@ exchange-rate:
 jwt:
   secret: ${JWT_SECRET}
   access-token-expiration-ms: 3600000
-
-onesignal:
-  app-id: ${ONESIGNAL_APP_ID:}
-  rest-api-key: ${ONESIGNAL_REST_API_KEY:}
-
-scheduler:
-  payment-reminder:
-    enabled: true
-    cron: "0 0 9 * * *"
 
 springdoc:
   swagger-ui:
@@ -237,8 +222,7 @@ frontend/
      │   ├─ App.jsx
      │   ├─ router.jsx
      │   └─ provider/
-     │       ├─ QueryProvider.jsx
-     │       └─ ThemeProvider.jsx
+     │       └─ QueryProvider.jsx
      ├─ features/
      │   ├─ auth/
      │   │   ├─ api/
@@ -250,33 +234,22 @@ frontend/
      │   │   ├─ api/
      │   │   ├─ validation/
      │   │   └─ utils/
-     │   ├─ dashboard/
-     │   ├─ notification/
-     │   └─ payment/
+     │   └─ dashboard/
      ├─ page/
      │   ├─ Landing/
      │   ├─ Auth/
      │   ├─ Dashboard/
-     │   ├─ SubscriptionList/
-     │   ├─ SubscriptionForm/
-     │   ├─ SubscriptionDetail/
-     │   ├─ Notification/
+     │   ├─ Subscription/
      │   └─ MyPage/
      ├─ shared/
      │   ├─ api/
      │   │   └─ api.js
      │   ├─ ui/
-     │   │   ├─ Button/
-     │   │   ├─ Form/
-     │   │   ├─ Select/
-     │   │   ├─ Card/
-     │   │   └─ Badge/
-     │   ├─ lib/
-     │   │   ├─ dayjs.js
-     │   │   └─ oneSignal.js
+     │   │   ├─ MainLayout.jsx
+     │   │   └─ ProtectedRoute.jsx
      │   └─ utils/
-     │       ├─ format.js
-     │       └─ paymentStatus.js
+     │       ├─ currencyFormat.js
+     │       └─ errorMessage.js
 ```
 
 ---
@@ -289,10 +262,6 @@ frontend/
 /signup                   회원가입
 /dashboard                대시보드
 /subscriptions            구독 목록
-/subscriptions/new        구독 등록
-/subscriptions/:id        구독 상세
-/subscriptions/:id/edit   구독 수정
-/notifications            알림
 /my                       마이페이지
 ```
 
@@ -301,10 +270,6 @@ frontend/
 ```txt
 /dashboard
 /subscriptions
-/subscriptions/new
-/subscriptions/:id
-/subscriptions/:id/edit
-/notifications
 /my
 ```
 
@@ -337,7 +302,7 @@ export const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = useAuthStore.getState().token;
+    const token = useAuthStore.getState().accessToken;
 
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;
@@ -360,16 +325,14 @@ SubTrack에서는 백엔드 응답이 공통 응답 형태이므로, 각 API 함
 
 ["categories"]
 
-["subscriptions", "list", filters]
-["subscriptions", "detail", subscriptionId]
+["subscriptions", filters]
+["subscription", subscriptionId]
 
-["dashboard", "summary", yearMonth]
-["dashboard", "upcoming", days]
-["dashboard", "category-expenses", yearMonth]
+["dashboardSummary", yearMonth]
+["dashboardUpcoming", days]
+["dashboardCategoryExpenses", yearMonth]
 ["dashboard", "monthly-expenses", from, to]
 ["dashboard", "monthly-schedule", yearMonth]
-
-["notifications", "list", filters]
 ```
 
 mutation 후 invalidate 기준:
@@ -379,7 +342,6 @@ mutation 후 invalidate 기준:
 | 구독 등록 | subscriptions, dashboard |
 | 구독 수정 | subscriptions, subscription detail, dashboard |
 | 구독 삭제 | subscriptions, dashboard |
-| 알림 읽음 | notifications |
 | 닉네임 수정 | member me |
 
 ---
@@ -390,18 +352,15 @@ Zustand는 최소한으로 사용합니다.
 
 ### authStore
 
-- token
-- user
+- accessToken
+- member
+- isAuthenticated
 - setLogin
+- setMember
 - logout
 
-### uiStore
-
-- mobileMenuOpen
-- selectedYearMonth
-
 서버 데이터는 Zustand에 넣지 않습니다.  
-구독 목록, 대시보드, 알림 목록은 React Query가 관리합니다.
+구독 목록과 대시보드는 React Query가 관리합니다.
 
 ---
 
@@ -525,17 +484,14 @@ MVP는 `KRW`, `USD`, `JPY`, `CNY`, `EUR` 통화 입력을 지원합니다. Dashb
 - 결제 기준일
 - 수정 / 삭제 버튼
 
-### Notification
-
-- 알림 목록
-- 읽음 처리
-- 전체 읽음 처리
-
 ### MyPage
 
 - 내 정보
 - 닉네임 수정
-- P1 푸시 설정
+- 프로필 수정
+- 비밀번호 변경
+- 환율/표시 기준 안내
+- 서비스 사용 기준 안내
 
 ---
 
@@ -558,5 +514,6 @@ Codex에게 한 번에 전체 프로젝트를 만들게 하지 않습니다.
 11. 구독 목록 / 등록 / 수정 / 상세 화면
 12. 대시보드 화면
 13. 다중 통화 / 환율 캐시 / KRW 환산 Dashboard
-14. P1 알림 / OneSignal
-15. 테스트 코드
+14. 문서 / 빌드 정리
+15. P1 알림 / OneSignal 후보 검토
+16. 테스트 코드

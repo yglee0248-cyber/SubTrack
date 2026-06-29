@@ -302,6 +302,7 @@ P1 OneSignal 발송 결과를 관리합니다.
 - subscription_category
 - subscription
 - subscription_status_history
+- exchange_rate
 
 ### P1에서 추가로 사용하는 테이블
 

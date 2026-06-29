@@ -49,7 +49,7 @@ Database : Docker MySQL
 로컬 DB 접속 예시는 다음과 같다.
 
 ```env
-DB_URL=jdbc:mysql://localhost:3307/subtrack?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+DB_URL=jdbc:mysql://localhost:3307/subtrack?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&characterSetResults=utf8mb4
 DB_USERNAME=root
 DB_PASSWORD=password
 ```
@@ -71,27 +71,25 @@ DB_URL=
 DB_USERNAME=
 DB_PASSWORD=
 JWT_SECRET=
-ONESIGNAL_APP_ID=
-ONESIGNAL_REST_API_KEY=
 CORS_ALLOWED_ORIGINS=
+EXCHANGE_RATE_BASE_URL=
 ```
 
 로컬 예시:
 
 ```env
-DB_URL=jdbc:mysql://localhost:3307/subtrack?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+DB_URL=jdbc:mysql://localhost:3307/subtrack?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&characterSetResults=utf8mb4
 DB_USERNAME=root
 DB_PASSWORD=password
 JWT_SECRET=local-development-secret-key-change-later
-ONESIGNAL_APP_ID=
-ONESIGNAL_REST_API_KEY=
 CORS_ALLOWED_ORIGINS=http://localhost:5173
+EXCHANGE_RATE_BASE_URL=https://api.frankfurter.dev
 ```
 
 AWS RDS 예시:
 
 ```env
-DB_URL=jdbc:mysql://{rds-endpoint}:3306/subtrack?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+DB_URL=jdbc:mysql://{rds-endpoint}:3306/subtrack?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&characterSetResults=utf8mb4
 DB_USERNAME=admin
 DB_PASSWORD={rds-password}
 JWT_SECRET={production-jwt-secret}
@@ -160,7 +158,7 @@ docker run -d \
 프론트엔드 환경변수 예시:
 
 ```env
-VITE_API_BASE_URL=https://{backend-domain-or-ec2-public-url}/api
+VITE_BACKSERVER=https://{backend-domain-or-ec2-public-url}
 ```
 
 초기에는 EC2 public IP 또는 EC2 도메인을 사용할 수 있다.
