@@ -337,3 +337,84 @@ CORS_ALLOWED_ORIGINS=http://localhost:5173,https://<cloudfront-domain>
 ```
 
 `*` origin은 허용하지 않는다. CloudFront 배포 후에는 실제 프론트엔드 origin이 `CORS_ALLOWED_ORIGINS`에 포함되어 있는지 먼저 확인한다.
+
+## 11. EC2 backend JAR + systemd 배포 템플릿
+
+백엔드 운영 프로필 설정은 아래 파일에 둔다.
+
+```txt
+backend/src/main/resources/application-prod.yml
+```
+
+이 파일은 `SPRING_PROFILES_ACTIVE=prod`일 때 사용되며, 로컬 기본 실행용 `application.yml`은 그대로 유지한다. 운영에서 민감하거나 환경마다 달라지는 값은 EC2의 `/opt/subtrack/app.env`로 주입한다.
+
+운영 환경변수 예시는 아래 파일에서 확인한다.
+
+```txt
+deploy/backend/app.env.example
+```
+
+EC2에서는 예시 파일을 참고해 실제 파일을 만든다.
+
+```bash
+sudo mkdir -p /opt/subtrack
+sudo cp deploy/backend/app.env.example /opt/subtrack/app.env
+sudo vi /opt/subtrack/app.env
+sudo chmod 600 /opt/subtrack/app.env
+```
+
+`/opt/subtrack/app.env`에는 실제 운영 값이 들어가므로 Git에 커밋하지 않는다. 실제 RDS endpoint, DB password, JWT secret, CloudFront domain은 문서에 기록하지 않고 EC2 환경 또는 GitHub Secrets에서만 관리한다.
+
+systemd 서비스 템플릿은 아래 파일에 둔다.
+
+```txt
+deploy/backend/subtrack.service
+```
+
+EC2에서는 `<ec2-app-user>`를 실제 실행 사용자로 바꾼 뒤 systemd 경로에 복사한다.
+
+```bash
+sudo cp deploy/backend/subtrack.service /etc/systemd/system/subtrack-backend.service
+sudo vi /etc/systemd/system/subtrack-backend.service
+sudo systemctl daemon-reload
+```
+
+JAR 배치와 서비스 재시작은 아래 스크립트 템플릿을 사용한다.
+
+```txt
+deploy/backend/deploy-backend.sh
+```
+
+사용 예시:
+
+```bash
+chmod +x deploy/backend/deploy-backend.sh
+./deploy/backend/deploy-backend.sh ./subtrack-backend.jar
+```
+
+스크립트는 `/opt/subtrack` 디렉터리를 만들고, 전달받은 JAR를 `/opt/subtrack/subtrack-backend.jar`로 복사한 뒤 `subtrack-backend` systemd 서비스를 enable/restart한다.
+
+배포 후 서비스 상태와 로그는 아래 명령으로 확인한다.
+
+```bash
+sudo systemctl status subtrack-backend --no-pager
+sudo journalctl -u subtrack-backend -f
+```
+
+애플리케이션 기동 확인은 health check endpoint로 한다.
+
+```bash
+curl http://localhost:8080/api/health
+```
+
+예상 응답:
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "data": {
+    "status": "UP"
+  }
+}
+```

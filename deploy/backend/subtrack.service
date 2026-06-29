@@ -1,0 +1,14 @@
+[Unit]
+Description=SubTrack Spring Boot Backend
+After=network.target
+
+[Service]
+User=<ec2-app-user>
+WorkingDirectory=/opt/subtrack
+EnvironmentFile=/opt/subtrack/app.env
+ExecStart=/usr/bin/java -jar /opt/subtrack/subtrack-backend.jar
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
