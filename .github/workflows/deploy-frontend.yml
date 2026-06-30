@@ -1,0 +1,86 @@
+name: Deploy Frontend
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  NODE_VERSION: ${{ vars.NODE_VERSION || '20' }}
+  S3_BUCKET_NAME: ${{ vars.S3_BUCKET_NAME }}
+  CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+  VITE_BACKSERVER: ${{ vars.VITE_BACKSERVER }}
+
+jobs:
+  deploy-frontend:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check required variables and secrets
+        env:
+          AWS_ACCESS_KEY_ID_VALUE: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY_VALUE: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          missing=0
+
+          for name in AWS_REGION S3_BUCKET_NAME CLOUDFRONT_DISTRIBUTION_ID VITE_BACKSERVER; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error title=Missing repository variable::${name} is required."
+              missing=1
+            fi
+          done
+
+          if [[ -z "${AWS_ACCESS_KEY_ID_VALUE:-}" ]]; then
+            echo "::error title=Missing repository secret::AWS_ACCESS_KEY_ID is required."
+            missing=1
+          fi
+
+          if [[ -z "${AWS_SECRET_ACCESS_KEY_VALUE:-}" ]]; then
+            echo "::error title=Missing repository secret::AWS_SECRET_ACCESS_KEY is required."
+            missing=1
+          fi
+
+          if [[ "${missing}" -ne 0 ]]; then
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Sync frontend build to S3
+        working-directory: frontend
+        run: aws s3 sync dist "s3://${S3_BUCKET_NAME}" --delete
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" \
+            --paths "/*"

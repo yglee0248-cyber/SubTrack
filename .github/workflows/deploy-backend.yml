@@ -1,0 +1,179 @@
+name: Deploy Backend
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BACKEND_SERVICE_NAME: ${{ vars.BACKEND_SERVICE_NAME || 'subtrack-backend' }}
+  EC2_APP_DIR: ${{ vars.EC2_APP_DIR || '/opt/subtrack' }}
+  BACKEND_JAR_NAME: ${{ vars.BACKEND_JAR_NAME || 'subtrack-backend.jar' }}
+  EC2_SERVICE_USER: ${{ vars.EC2_SERVICE_USER }}
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check required variables and secrets
+        env:
+          EC2_HOST_VALUE: ${{ secrets.EC2_HOST }}
+          EC2_USER_VALUE: ${{ secrets.EC2_USER }}
+          EC2_SSH_PRIVATE_KEY_VALUE: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+        run: |
+          missing=0
+
+          if [[ -z "${BACKEND_SERVICE_NAME:-}" ]]; then
+            echo "::error title=Missing backend config::BACKEND_SERVICE_NAME is required."
+            missing=1
+          fi
+
+          if [[ -z "${EC2_APP_DIR:-}" ]]; then
+            echo "::error title=Missing backend config::EC2_APP_DIR is required."
+            missing=1
+          fi
+
+          if [[ -z "${BACKEND_JAR_NAME:-}" ]]; then
+            echo "::error title=Missing backend config::BACKEND_JAR_NAME is required."
+            missing=1
+          fi
+
+          if [[ -z "${EC2_SERVICE_USER:-}" ]]; then
+            echo "::error title=Missing repository variable::EC2_SERVICE_USER is required."
+            missing=1
+          fi
+
+          if [[ -z "${EC2_HOST_VALUE:-}" ]]; then
+            echo "::error title=Missing repository secret::EC2_HOST is required."
+            missing=1
+          fi
+
+          if [[ -z "${EC2_USER_VALUE:-}" ]]; then
+            echo "::error title=Missing repository secret::EC2_USER is required."
+            missing=1
+          fi
+
+          if [[ -z "${EC2_SSH_PRIVATE_KEY_VALUE:-}" ]]; then
+            echo "::error title=Missing repository secret::EC2_SSH_PRIVATE_KEY is required."
+            missing=1
+          fi
+
+          if [[ "${missing}" -ne 0 ]]; then
+            exit 1
+          fi
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Build backend
+        working-directory: backend
+        run: |
+          chmod +x ./mvnw
+          ./mvnw clean package
+
+      - name: Prepare deployment artifacts
+        run: |
+          mkdir -p deploy-artifacts
+
+          jar_path="$(find backend/target -maxdepth 1 -type f -name "*.jar" | head -n 1)"
+          if [[ -z "${jar_path}" ]]; then
+            echo "::error title=JAR not found::No JAR file found under backend/target."
+            exit 1
+          fi
+
+          cp "${jar_path}" "deploy-artifacts/${BACKEND_JAR_NAME}"
+
+          sed \
+            -e "s|<ec2-app-user>|${EC2_SERVICE_USER}|g" \
+            -e "s|/opt/subtrack|${EC2_APP_DIR}|g" \
+            -e "s|subtrack-backend.jar|${BACKEND_JAR_NAME}|g" \
+            deploy/backend/subtrack.service > deploy-artifacts/subtrack-backend.service
+
+          if grep -q "<ec2-app-user>" deploy-artifacts/subtrack-backend.service; then
+            echo "::error title=Invalid systemd service::The <ec2-app-user> placeholder was not replaced."
+            exit 1
+          fi
+
+          cp deploy/backend/deploy-backend.sh deploy-artifacts/deploy-backend.sh
+
+      - name: Configure SSH
+        env:
+          EC2_HOST_VALUE: ${{ secrets.EC2_HOST }}
+          EC2_SSH_PRIVATE_KEY_VALUE: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          install -m 600 /dev/null ~/.ssh/subtrack_ec2_key
+          printf '%s' "${EC2_SSH_PRIVATE_KEY_VALUE}" > ~/.ssh/subtrack_ec2_key
+          ssh-keyscan -H "${EC2_HOST_VALUE}" >> ~/.ssh/known_hosts
+
+      - name: Prepare EC2 app directory
+        env:
+          EC2_HOST_VALUE: ${{ secrets.EC2_HOST }}
+          EC2_USER_VALUE: ${{ secrets.EC2_USER }}
+        run: |
+          ssh -i ~/.ssh/subtrack_ec2_key "${EC2_USER_VALUE}@${EC2_HOST_VALUE}" "bash -s" <<EOF
+          set -euo pipefail
+          sudo mkdir -p "${EC2_APP_DIR}"
+          sudo chown "${EC2_SERVICE_USER}" "${EC2_APP_DIR}"
+          EOF
+
+      - name: Upload backend artifacts to EC2
+        env:
+          EC2_HOST_VALUE: ${{ secrets.EC2_HOST }}
+          EC2_USER_VALUE: ${{ secrets.EC2_USER }}
+        run: |
+          scp -i ~/.ssh/subtrack_ec2_key "deploy-artifacts/${BACKEND_JAR_NAME}" \
+            "${EC2_USER_VALUE}@${EC2_HOST_VALUE}:/tmp/${BACKEND_JAR_NAME}"
+          scp -i ~/.ssh/subtrack_ec2_key deploy-artifacts/subtrack-backend.service \
+            "${EC2_USER_VALUE}@${EC2_HOST_VALUE}:/tmp/subtrack-backend.service"
+          scp -i ~/.ssh/subtrack_ec2_key deploy-artifacts/deploy-backend.sh \
+            "${EC2_USER_VALUE}@${EC2_HOST_VALUE}:/tmp/deploy-backend.sh"
+
+      - name: Install systemd service and restart backend
+        env:
+          EC2_HOST_VALUE: ${{ secrets.EC2_HOST }}
+          EC2_USER_VALUE: ${{ secrets.EC2_USER }}
+        run: |
+          ssh -i ~/.ssh/subtrack_ec2_key "${EC2_USER_VALUE}@${EC2_HOST_VALUE}" "bash -s" <<EOF
+          set -euo pipefail
+          sudo cp /tmp/subtrack-backend.service "/etc/systemd/system/${BACKEND_SERVICE_NAME}.service"
+          chmod +x /tmp/deploy-backend.sh
+          sed -i 's|^APP_DIR=.*|APP_DIR="${EC2_APP_DIR}"|' /tmp/deploy-backend.sh
+          sed -i 's|^JAR_NAME=.*|JAR_NAME="${BACKEND_JAR_NAME}"|' /tmp/deploy-backend.sh
+          sed -i 's|^SERVICE_NAME=.*|SERVICE_NAME="${BACKEND_SERVICE_NAME}"|' /tmp/deploy-backend.sh
+          /tmp/deploy-backend.sh "/tmp/${BACKEND_JAR_NAME}"
+          EOF
+
+      - name: Health check
+        env:
+          EC2_HOST_VALUE: ${{ secrets.EC2_HOST }}
+          EC2_USER_VALUE: ${{ secrets.EC2_USER }}
+        run: |
+          ssh -i ~/.ssh/subtrack_ec2_key "${EC2_USER_VALUE}@${EC2_HOST_VALUE}" "bash -s" <<EOF
+          set -euo pipefail
+          for attempt in {1..12}; do
+            if curl -fsS http://localhost:8080/api/health; then
+              exit 0
+            fi
+            sleep 5
+          done
+
+          echo "Backend health check failed."
+          sudo systemctl status "${BACKEND_SERVICE_NAME}" --no-pager || true
+          sudo journalctl -u "${BACKEND_SERVICE_NAME}" -n 80 --no-pager || true
+          exit 1
+          EOF

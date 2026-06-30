@@ -283,7 +283,12 @@ GitHub Actions는 프론트엔드와 백엔드 배포 자동화에 사용한다.
 
 AWS 인증은 장기 access key보다 GitHub OIDC와 IAM Role 방식을 우선 검토한다. SSH 방식으로 EC2에 배포한다면 private key는 GitHub Secrets에 저장하고, EC2 접속 host/user 정보는 `docs/aws-secrets-and-env.md` 기준으로 관리한다.
 
-이 작업에서는 workflow 파일을 만들지 않는다. 실제 CI/CD workflow는 별도 작업에서 작성한다.
+현재 배포 workflow는 아래 두 파일로 분리한다.
+
+```txt
+.github/workflows/deploy-frontend.yml
+.github/workflows/deploy-backend.yml
+```
 
 ## 9. 배포 후 확인 순서
 
@@ -325,6 +330,65 @@ GET /api/health
     "status": "UP"
   }
 }
+```
+
+## 13. GitHub Actions 배포 흐름
+
+프론트엔드 배포 workflow:
+
+```txt
+.github/workflows/deploy-frontend.yml
+```
+
+실행 전 필요한 리소스와 설정:
+
+- S3 bucket
+- CloudFront distribution
+- S3 sync와 CloudFront invalidation 권한이 있는 AWS access key
+- Repository Variables: `AWS_REGION`, `NODE_VERSION`, `S3_BUCKET_NAME`, `CLOUDFRONT_DISTRIBUTION_ID`, `VITE_BACKSERVER`
+- Repository Secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+
+frontend workflow는 `frontend` 디렉터리에서 `npm ci`, `npm run build`를 실행하고, `frontend/dist`를 S3에 `--delete` 옵션으로 sync한 뒤 CloudFront `/*` invalidation을 생성한다. `VITE_BACKSERVER`는 frontend build 시점에 브라우저 번들에 포함되므로 secret으로 취급하지 않는다.
+
+현재 workflow는 안전을 위해 `workflow_dispatch` 수동 실행만 사용한다. AWS 리소스와 GitHub Secrets/Variables 준비가 끝난 뒤 필요하면 `main` push trigger를 다시 추가할 수 있다.
+
+백엔드 배포 workflow:
+
+```txt
+.github/workflows/deploy-backend.yml
+```
+
+실행 전 필요한 EC2 준비:
+
+- Java 17 설치
+- `/opt/subtrack/app.env` 작성
+- `SPRING_PROFILES_ACTIVE=prod` 설정
+- systemd service를 실행할 EC2 사용자 준비
+- `EC2_SERVICE_USER` Repository Variable 설정
+- `EC2_SERVICE_USER`가 `/opt/subtrack` 접근 권한과 `systemctl restart`에 필요한 sudo 권한을 갖는지 확인
+- EC2 security group에서 8080 접근 또는 별도 HTTPS 프록시 구성 확인
+- Repository Variables: `BACKEND_SERVICE_NAME`, `EC2_APP_DIR`, `BACKEND_JAR_NAME`, `EC2_SERVICE_USER`
+- Repository Secrets: `EC2_HOST`, `EC2_USER`, `EC2_SSH_PRIVATE_KEY`
+
+backend workflow는 `backend` 디렉터리에서 `./mvnw clean package`를 실행하고, 생성된 JAR를 `subtrack-backend.jar` 이름으로 정리한 뒤 EC2에 업로드한다. 이후 `deploy/backend/subtrack.service`와 `deploy/backend/deploy-backend.sh` 템플릿을 EC2 `/tmp`에 올리고 systemd 서비스를 재시작한다.
+
+backend workflow는 `deploy/backend/subtrack.service`의 `<ec2-app-user>` placeholder를 EC2에 업로드하기 전에 `EC2_SERVICE_USER` 값으로 치환한다. `EC2_SERVICE_USER`가 비어 있으면 workflow가 실패해야 한다.
+
+backend workflow는 `/opt/subtrack/app.env`를 생성하지 않는다. DB URL, DB password, JWT secret, CORS origin 같은 운영 값은 사용자가 EC2에 직접 만들거나 별도 안전한 방식으로 주입한다. workflow 로그에 `app.env` 내용을 출력하지 않는다.
+
+RDS 초기화는 workflow에서 수행하지 않는다. 신규 RDS는 별도로 `database/00_rds_init_all.sql`을 적용한다.
+
+최초 배포 권장 순서:
+
+```txt
+1. RDS 생성 및 database/00_rds_init_all.sql 적용
+2. EC2 생성 및 /opt/subtrack/app.env 작성
+3. backend workflow 실행
+4. backend /api/health 확인
+5. S3 bucket 및 CloudFront distribution 생성
+6. VITE_BACKSERVER Repository Variable 설정
+7. frontend workflow 실행
+8. 브라우저에서 회원가입, 로그인, 구독 등록 확인
 ```
 
 ## 12. RDS 신규 DB 초기화 SQL
@@ -424,7 +488,7 @@ systemd 서비스 템플릿은 아래 파일에 둔다.
 deploy/backend/subtrack.service
 ```
 
-EC2에서는 `<ec2-app-user>`를 실제 실행 사용자로 바꾼 뒤 systemd 경로에 복사한다.
+수동 배포를 할 때는 `<ec2-app-user>`를 `EC2_SERVICE_USER`에 해당하는 실제 실행 사용자로 바꾼 뒤 systemd 경로에 복사한다. GitHub Actions backend workflow는 업로드 전에 이 placeholder를 `EC2_SERVICE_USER` 값으로 치환한다.
 
 ```bash
 sudo cp deploy/backend/subtrack.service /etc/systemd/system/subtrack-backend.service

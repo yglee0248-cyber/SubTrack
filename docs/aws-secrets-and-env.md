@@ -33,6 +33,7 @@ CLOUDFRONT_DISTRIBUTION_ID=<cloudfront-distribution-id>
 BACKEND_SERVICE_NAME=subtrack-backend
 EC2_APP_DIR=/opt/subtrack
 BACKEND_JAR_NAME=subtrack-backend.jar
+EC2_SERVICE_USER=<ec2-service-user>
 
 VITE_BACKSERVER=https://<backend-api-domain>
 ```
@@ -40,6 +41,8 @@ VITE_BACKSERVER=https://<backend-api-domain>
 주의:
 
 - `VITE_BACKSERVER`는 secret이 아니다. 빌드된 프론트엔드 JavaScript에서 확인될 수 있다.
+- `EC2_SERVICE_USER`는 EC2에서 systemd로 Spring Boot 앱을 실행할 Linux 사용자명이다.
+- Amazon Linux 2023 기본 사용자는 보통 `ec2-user`, Ubuntu는 `ubuntu`일 수 있으나 실제 배포에서는 앱 실행 전용 사용자를 만들 수 있다.
 - 실제 도메인을 문서에 적지 않고 GitHub Variables 또는 배포 환경에서 관리한다.
 - `S3_BUCKET_NAME`, `CLOUDFRONT_DISTRIBUTION_ID`도 팀 정책상 민감하게 관리하고 싶다면 Secrets로 옮길 수 있다.
 
@@ -68,7 +71,7 @@ EC2_USER=<ec2-ssh-user>
 EC2_SSH_PRIVATE_KEY=<ec2-private-key>
 ```
 
-GitHub Actions에서 EC2 `app.env`를 생성하거나 갱신하는 경우:
+EC2 `/opt/subtrack/app.env`에 들어갈 운영 값 예시:
 
 ```env
 SERVER_PORT=8080
@@ -118,7 +121,7 @@ EXCHANGE_RATE_BASE_URL=https://api.frankfurter.dev
 파일 권한 권장:
 
 ```bash
-sudo chown <ec2-app-user>:<ec2-app-user> /opt/subtrack/app.env
+sudo chown <ec2-service-user>:<ec2-service-user> /opt/subtrack/app.env
 sudo chmod 600 /opt/subtrack/app.env
 ```
 
@@ -312,3 +315,66 @@ CORS_ALLOWED_ORIGINS=https://<cloudfront-domain>
 ```
 
 실제 secret 값, 실제 RDS endpoint, 실제 CloudFront domain, 실제 AWS ARN은 이 문서에 기록하지 않는다.
+
+## 10. GitHub Actions workflow Variables and Secrets
+
+프론트엔드 배포 workflow:
+
+```txt
+.github/workflows/deploy-frontend.yml
+```
+
+백엔드 배포 workflow:
+
+```txt
+.github/workflows/deploy-backend.yml
+```
+
+Repository Variables:
+
+```env
+AWS_REGION=ap-northeast-2
+NODE_VERSION=20
+S3_BUCKET_NAME=<s3-bucket-name>
+CLOUDFRONT_DISTRIBUTION_ID=<cloudfront-distribution-id>
+VITE_BACKSERVER=https://<backend-api-domain>
+
+BACKEND_SERVICE_NAME=subtrack-backend
+EC2_APP_DIR=/opt/subtrack
+BACKEND_JAR_NAME=subtrack-backend.jar
+EC2_SERVICE_USER=<ec2-service-user>
+```
+
+Repository Secrets:
+
+```env
+AWS_ACCESS_KEY_ID=<aws-access-key-id>
+AWS_SECRET_ACCESS_KEY=<aws-secret-access-key>
+EC2_HOST=<ec2-host-or-public-dns>
+EC2_USER=<ec2-ssh-user>
+EC2_SSH_PRIVATE_KEY=<ec2-private-key>
+```
+
+EC2 `/opt/subtrack/app.env`:
+
+```env
+SPRING_PROFILES_ACTIVE=prod
+SERVER_PORT=8080
+DB_URL=jdbc:mysql://<rds-endpoint>:3306/subtrack?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&characterSetResults=utf8mb4
+DB_USERNAME=<rds-app-username>
+DB_PASSWORD=<rds-app-password>
+JWT_SECRET=<jwt-secret>
+JWT_ACCESS_TOKEN_EXPIRATION_MS=3600000
+CORS_ALLOWED_ORIGINS=https://<cloudfront-domain>
+EXCHANGE_RATE_BASE_URL=https://api.frankfurter.dev
+```
+
+주의사항:
+
+- `VITE_BACKSERVER`는 frontend build 시점에 브라우저 번들에 포함된다.
+- `EC2_SERVICE_USER`는 EC2에서 systemd로 Spring Boot 앱을 실행할 Linux 사용자명이다.
+- Amazon Linux 2023 기본 사용자는 보통 `ec2-user`, Ubuntu는 `ubuntu`일 수 있으나 실제 배포에서는 앱 실행 전용 사용자를 만들 수 있다.
+- `CORS_ALLOWED_ORIGINS`에는 CloudFront frontend origin을 넣는다.
+- `/opt/subtrack/app.env`는 GitHub Actions 로그에 출력하지 않는다.
+- backend workflow는 `/opt/subtrack/app.env`를 생성하지 않는다.
+- 실제 secret 값, 실제 RDS endpoint, 실제 CloudFront domain, 실제 AWS ARN은 문서와 workflow에 넣지 않는다.
