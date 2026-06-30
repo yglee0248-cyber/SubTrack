@@ -1,6 +1,6 @@
 # SubTrack AWS Deploy Guide
 
-이 문서는 SubTrack을 AWS에 배포할 때 확인할 준비 사항을 정리한 가이드다.
+이 문서는 SubTrack을 AWS에 배포할 때 확인할 준비 사항과 GitHub Actions 배포 흐름을 정리한 가이드다.
 
 실제 AWS 리소스 생성은 이 문서만으로 진행하지 않는다. AWS 콘솔 또는 IaC 작업 전, 비용과 보안 그룹 범위를 먼저 확인한다.
 
@@ -35,9 +35,7 @@ CI/CD    : GitHub Actions
 Region   : ap-northeast-2
 ```
 
-프론트엔드는 빌드 시점의 `VITE_BACKSERVER` 값을 사용해 백엔드 API 주소를 결정한다.
-
-백엔드는 `application.yml`의 로컬 기본값을 그대로 사용하지 않고, EC2의 `/opt/subtrack/app.env` 환경변수로 운영 값을 주입한다.
+frontend는 build 시점의 `VITE_BACKSERVER` 값을 사용해 backend API 주소를 결정한다. backend는 `SPRING_PROFILES_ACTIVE=prod`로 실행하고, 운영 값은 EC2의 `/opt/subtrack/app.env`에서 주입한다.
 
 ## 2. RDS MySQL 생성 개요
 
@@ -65,21 +63,22 @@ Collation     : utf8mb4_unicode_ci
 3. database/00_rds_init_all.sql 실행
 ```
 
-`database/00_rds_init_all.sql`은 신규 RDS의 빈 `subtrack` DB를 위한 통합 초기화 파일이다.
+`database/00_rds_init_all.sql`은 신규 RDS의 빈 `subtrack` DB를 위한 통합 초기화 파일이다. `database/03_*` 이후 파일은 기존 로컬 DB를 유지하면서 변경분을 반영하기 위한 migration이므로, 신규 RDS에 `00_rds_init_all.sql`을 적용한 뒤 `03~06`을 이어서 적용하지 않는다.
 
-`database/03_*` 이후 파일은 기존 로컬 DB를 유지하면서 변경분을 반영하기 위한 migration이다. 신규 RDS에 `00_rds_init_all.sql`을 적용한 뒤 `03~06`을 이어서 적용하지 않는다. 특히 `03_add_billing_start_date.sql`은 이미 존재하는 컬럼/인덱스와 충돌할 수 있다.
+SQL 적용 후 확인 쿼리:
 
-JDBC URL 예시 형식:
-
-```env
-DB_URL=jdbc:mysql://<rds-endpoint>:3306/subtrack?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&characterSetResults=utf8mb4
+```sql
+SHOW TABLES;
+SELECT COUNT(*) FROM subscription_category;
+SELECT COUNT(*) FROM exchange_rate;
+SELECT COUNT(*) FROM subscription_status_history;
 ```
 
-`<rds-endpoint>`, 사용자명, 비밀번호는 코드나 문서에 실제 값으로 저장하지 않는다.
+신규 DB라면 `subscription_status_history`는 0건이어도 정상이다.
 
 ## 3. RDS 보안 그룹 개요
 
-RDS 보안 그룹은 EC2 백엔드에서만 접근할 수 있게 제한한다.
+RDS 보안 그룹은 EC2 backend에서만 접근할 수 있게 제한한다.
 
 Inbound 예시:
 
@@ -92,13 +91,12 @@ Source: <ec2-security-group-id>
 주의사항:
 
 - RDS를 `0.0.0.0/0`에 공개하지 않는다.
-- 로컬 PC에서 직접 RDS에 접속해야 하는 임시 상황이면, 작업자 IP만 짧게 허용하고 작업 후 제거한다.
 - EC2와 RDS가 같은 VPC 안에 있어야 보안 그룹 참조 방식으로 접근 제어하기 쉽다.
-- 운영 DB 계정은 root 계정 대신 애플리케이션 전용 계정을 사용하는 방향을 권장한다.
+- 운영 DB 계정은 root/master 계정 대신 애플리케이션 전용 계정을 사용하는 방향을 권장한다.
 
 ## 4. EC2 생성 개요
 
-EC2는 Spring Boot JAR를 실행하는 백엔드 서버로 사용한다.
+EC2는 Spring Boot JAR를 실행하는 backend 서버로 사용한다.
 
 권장 시작 설정:
 
@@ -110,231 +108,160 @@ App path     : /opt/subtrack
 Service name : subtrack-backend
 ```
 
-EC2 보안 그룹 Inbound 예시:
+backend workflow 실행 전 EC2에는 아래 준비가 필요하다.
+
+- Java 17 설치
+- GitHub Actions runner에서 SSH 접속 가능
+- `EC2_USER`가 필요한 `sudo` 권한 보유
+- `EC2_SERVICE_USER` Linux 사용자 준비
+- EC2에서 RDS MySQL 3306으로 접속 가능
+- backend 8080 접근 또는 HTTPS reverse proxy 구성 확인
+
+`EC2_SERVICE_USER`는 `/opt/subtrack` 접근 권한과 systemd로 앱을 실행할 권한이 필요하다. workflow는 `/opt/subtrack/app.env`와 JAR owner를 `EC2_SERVICE_USER`로 설정한다.
+
+## 5. Backend GitHub Actions 자동배포
+
+backend 배포 workflow:
 
 ```txt
-SSH 22       : <admin-ip>/32
-Backend 8080: 테스트용으로만 제한 허용
-```
-
-운영 프론트엔드가 CloudFront HTTPS로 서비스되면, 브라우저의 mixed content 정책 때문에 HTTP 백엔드 호출이 막힐 수 있다. 실제 운영 연결에서는 `VITE_BACKSERVER`에 HTTPS 백엔드 API 주소를 넣는 구성을 권장한다.
-
-## 5. EC2에서 Spring Boot JAR 실행 개요
-
-백엔드는 Maven Wrapper로 빌드한다.
-
-로컬 Windows 빌드 예시:
-
-```powershell
-cd backend
-.\mvnw.cmd clean package
-```
-
-EC2 Linux 빌드 예시:
-
-```bash
-cd backend
-./mvnw clean package
-```
-
-생성된 JAR는 EC2의 앱 디렉터리에 배치한다.
-
-```txt
-/opt/subtrack/subtrack-backend.jar
-/opt/subtrack/app.env
-```
-
-`/opt/subtrack/app.env`에는 운영 환경변수를 둔다. 실제 값은 `docs/aws-secrets-and-env.md`의 placeholder를 기준으로 별도 관리한다.
-
-systemd unit 예시:
-
-```ini
-[Unit]
-Description=SubTrack Spring Boot Backend
-After=network.target
-
-[Service]
-User=<ec2-app-user>
-WorkingDirectory=/opt/subtrack
-EnvironmentFile=/opt/subtrack/app.env
-ExecStart=/usr/bin/java -jar /opt/subtrack/subtrack-backend.jar
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-```
-
-운영 확인 명령 예시:
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable subtrack-backend
-sudo systemctl start subtrack-backend
-sudo systemctl status subtrack-backend
-sudo journalctl -u subtrack-backend -f
-```
-
-헬스 체크:
-
-```txt
-GET /api/health
-```
-
-Swagger UI:
-
-```txt
-GET /swagger-ui.html
-```
-
-## 6. S3 + CloudFront frontend 배포 개요
-
-프론트엔드는 Vite build 결과물인 `frontend/dist`를 S3에 업로드하고 CloudFront로 제공한다.
-
-빌드 예시:
-
-```bash
-cd frontend
-npm ci
-npm run build
-```
-
-S3 구성 개요:
-
-```txt
-Bucket public access : Block all public access
-Object source        : frontend/dist
-Static website hosting: CloudFront OAC를 사용할 경우 비활성화 가능
-```
-
-CloudFront 구성 개요:
-
-```txt
-Origin              : S3 bucket
-Default root object : index.html
-Viewer protocol     : Redirect HTTP to HTTPS
-SPA fallback        : 403/404 -> /index.html, status 200
-```
-
-React Router를 사용하므로 `/dashboard`, `/subscriptions` 같은 직접 접근 경로가 새로고침되어도 깨지지 않도록 CloudFront custom error response를 설정한다.
-
-## 7. CloudFront OAC 사용 권장
-
-S3 버킷은 public으로 열지 않고 CloudFront Origin Access Control(OAC)을 통해서만 읽히게 구성하는 것을 권장한다.
-
-권장 방향:
-
-```txt
-1. S3 Block Public Access 유지
-2. CloudFront Origin Access Control 생성
-3. CloudFront distribution에 OAC 연결
-4. S3 bucket policy는 해당 CloudFront distribution만 허용
-```
-
-S3 bucket policy에는 실제 AWS ARN을 문서에 기록하지 않고 placeholder만 사용한다.
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "cloudfront.amazonaws.com"
-      },
-      "Action": "s3:GetObject",
-      "Resource": "arn:aws:s3:::<s3-bucket-name>/*",
-      "Condition": {
-        "StringEquals": {
-          "AWS:SourceArn": "<cloudfront-distribution-arn>"
-        }
-      }
-    }
-  ]
-}
-```
-
-## 8. GitHub Actions 연결 개요
-
-GitHub Actions는 프론트엔드와 백엔드 배포 자동화에 사용한다.
-
-프론트엔드 배포 흐름:
-
-```txt
-1. checkout
-2. setup node
-3. frontend npm ci
-4. VITE_BACKSERVER 주입
-5. npm run build
-6. dist 파일 S3 sync
-7. CloudFront invalidation
-```
-
-백엔드 배포 흐름:
-
-```txt
-1. checkout
-2. setup Java 17
-3. backend Maven package
-4. JAR를 EC2 /opt/subtrack로 업로드
-5. systemd service restart
-6. /api/health 확인
-```
-
-AWS 인증은 장기 access key보다 GitHub OIDC와 IAM Role 방식을 우선 검토한다. SSH 방식으로 EC2에 배포한다면 private key는 GitHub Secrets에 저장하고, EC2 접속 host/user 정보는 `docs/aws-secrets-and-env.md` 기준으로 관리한다.
-
-현재 배포 workflow는 아래 두 파일로 분리한다.
-
-```txt
-.github/workflows/deploy-frontend.yml
 .github/workflows/deploy-backend.yml
 ```
 
-## 9. 배포 후 확인 순서
+실행 방식:
 
-배포 후에는 아래 순서로 확인한다.
+- `workflow_dispatch` 수동 실행
+- `main` 브랜치 push 자동 실행
 
-```txt
-1. RDS가 private 상태인지 확인
-2. RDS 보안 그룹이 EC2 보안 그룹만 3306으로 허용하는지 확인
-3. RDS에 database/00_rds_init_all.sql 적용 여부 확인
-4. EC2 /opt/subtrack/app.env에 운영 환경변수가 있는지 확인
-5. EC2 systemd service가 active 상태인지 확인
-6. 백엔드 /api/health 응답 확인
-7. Swagger UI 접근 필요 시 /swagger-ui.html 확인
-8. frontend npm run build 성공 확인
-9. frontend/dist가 S3에 업로드되었는지 확인
-10. CloudFront invalidation 후 프론트엔드 접속 확인
-11. 회원가입, 로그인, 구독 등록, 목록 조회, 대시보드 조회 확인
-12. 브라우저 콘솔에서 CORS 또는 mixed content 오류가 없는지 확인
-13. EC2 로그와 애플리케이션 로그에서 DB 연결 오류가 없는지 확인
-```
-
-## 10. Backend health check와 CORS 확인
-
-현재 백엔드 health check endpoint는 아래와 같다.
+자동 실행 대상 path:
 
 ```txt
-GET /api/health
+backend/**
+deploy/backend/**
+.github/workflows/deploy-backend.yml
 ```
 
-이 endpoint는 인증 없이 접근 가능해야 하며, DB 연결 상태까지 확인하지 않는 애플리케이션 기동 확인용 endpoint다.
+workflow는 아래 순서로 진행한다.
 
-예상 응답:
-
-```json
-{
-  "success": true,
-  "message": "OK",
-  "data": {
-    "status": "UP"
-  }
-}
+```txt
+1. 필수 GitHub Secrets/Variables 누락 검사
+2. Java 17 setup
+3. backend 디렉터리에서 ./mvnw clean package
+4. 생성된 JAR를 BACKEND_JAR_NAME으로 정리
+5. deploy/backend/subtrack.service의 <ec2-app-user>를 EC2_SERVICE_USER로 치환
+6. GitHub Secrets/Variables로 임시 app.env 생성
+7. EC2 /opt/subtrack 디렉터리 생성
+8. JAR, systemd service, app.env 업로드
+9. /opt/subtrack/app.env owner와 권한 설정
+10. JAR owner와 권한 설정
+11. /etc/systemd/system/<BACKEND_SERVICE_NAME>.service 설치
+12. systemctl daemon-reload, enable, restart
+13. curl http://localhost:8080/api/health 확인
+14. runner와 EC2 /tmp의 민감 파일 정리
 ```
 
-## 13. GitHub Actions 배포 흐름
+backend workflow가 생성하는 EC2 app.env 형식:
 
-프론트엔드 배포 workflow:
+```env
+SPRING_PROFILES_ACTIVE=prod
+SERVER_PORT=8080
+DB_URL=<GitHub Secrets DB_URL>
+DB_USERNAME=<GitHub Secrets DB_USERNAME>
+DB_PASSWORD=<GitHub Secrets DB_PASSWORD>
+JWT_SECRET=<GitHub Secrets JWT_SECRET>
+JWT_ACCESS_TOKEN_EXPIRATION_MS=3600000
+CORS_ALLOWED_ORIGINS=<GitHub Variables CORS_ALLOWED_ORIGINS>
+EXCHANGE_RATE_BASE_URL=<GitHub Variables EXCHANGE_RATE_BASE_URL 또는 https://api.frankfurter.dev>
+```
+
+`/opt/subtrack/app.env`를 EC2에서 사람이 직접 만드는 방식은 자동배포에서는 사용하지 않는다. 수동 배포를 할 때만 `deploy/backend/app.env.example`을 참고한다.
+
+누락값이 있으면 workflow는 값 자체를 출력하지 않고, 빠진 이름만 오류로 보여준다. `DB_PASSWORD`, `JWT_SECRET`, SSH private key, `app.env` 내용은 로그에 출력하지 않는다.
+
+## 6. Backend Secrets/Variables
+
+backend workflow에 필요한 Repository Secrets:
+
+```txt
+EC2_HOST
+EC2_USER
+EC2_SSH_PRIVATE_KEY
+DB_URL
+DB_USERNAME
+DB_PASSWORD
+JWT_SECRET
+```
+
+backend workflow에 필요한 Repository Variables:
+
+```txt
+BACKEND_SERVICE_NAME
+EC2_APP_DIR
+BACKEND_JAR_NAME
+EC2_SERVICE_USER
+CORS_ALLOWED_ORIGINS
+EXCHANGE_RATE_BASE_URL
+```
+
+기본값:
+
+```txt
+BACKEND_SERVICE_NAME=subtrack-backend
+EC2_APP_DIR=/opt/subtrack
+BACKEND_JAR_NAME=subtrack-backend.jar
+SERVER_PORT=8080
+JWT_ACCESS_TOKEN_EXPIRATION_MS=3600000
+EXCHANGE_RATE_BASE_URL=https://api.frankfurter.dev
+```
+
+필수 Variables:
+
+```txt
+EC2_SERVICE_USER
+CORS_ALLOWED_ORIGINS
+```
+
+`CORS_ALLOWED_ORIGINS`에는 CloudFront frontend origin을 넣는다.
+
+```env
+CORS_ALLOWED_ORIGINS=https://duyrjjey5ijja.cloudfront.net
+```
+
+여러 origin이 필요하면 쉼표로 구분한다.
+
+```env
+CORS_ALLOWED_ORIGINS=http://localhost:5173,https://<cloudfront-domain>
+```
+
+`CORS_ALLOWED_ORIGINS=*`는 사용하지 않는다.
+
+## 7. EC2 backend 수동 배포 템플릿
+
+아래 파일들은 수동 배포 또는 workflow 내부 템플릿으로 사용한다.
+
+```txt
+backend/src/main/resources/application-prod.yml
+deploy/backend/app.env.example
+deploy/backend/subtrack.service
+deploy/backend/deploy-backend.sh
+```
+
+`deploy/backend/app.env.example`은 수동 배포 참고용이다. 현재 backend workflow는 GitHub Secrets/Variables로 `/opt/subtrack/app.env`를 자동 생성 또는 갱신한다.
+
+수동 배포 시에는 `<ec2-app-user>`를 실제 실행 사용자로 바꾸고, `app.env`를 직접 만든 뒤 systemd를 재시작한다. 자동배포에서는 workflow가 `<ec2-app-user>`를 `EC2_SERVICE_USER` 값으로 치환한 파일만 EC2에 업로드한다.
+
+로그 확인:
+
+```bash
+sudo systemctl status subtrack-backend --no-pager
+sudo journalctl -u subtrack-backend -n 80 --no-pager
+sudo journalctl -u subtrack-backend -f
+```
+
+## 8. S3 + CloudFront Frontend 배포 개요
+
+frontend는 Vite build 결과물인 `frontend/dist`를 S3에 업로드하고 CloudFront로 제공한다.
+
+frontend 배포 workflow:
 
 ```txt
 .github/workflows/deploy-frontend.yml
@@ -348,180 +275,29 @@ GET /api/health
 - Repository Variables: `AWS_REGION`, `NODE_VERSION`, `S3_BUCKET_NAME`, `CLOUDFRONT_DISTRIBUTION_ID`, `VITE_BACKSERVER`
 - Repository Secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
 
-frontend workflow는 `frontend` 디렉터리에서 `npm ci`, `npm run build`를 실행하고, `frontend/dist`를 S3에 `--delete` 옵션으로 sync한 뒤 CloudFront `/*` invalidation을 생성한다. `VITE_BACKSERVER`는 frontend build 시점에 브라우저 번들에 포함되므로 secret으로 취급하지 않는다.
+`VITE_BACKSERVER`는 frontend build 시점에 브라우저 번들에 포함되므로 secret으로 취급하지 않는다.
 
-현재 workflow는 안전을 위해 `workflow_dispatch` 수동 실행만 사용한다. AWS 리소스와 GitHub Secrets/Variables 준비가 끝난 뒤 필요하면 `main` push trigger를 다시 추가할 수 있다.
+## 9. CloudFront OAC 사용 권장
 
-백엔드 배포 workflow:
+S3 bucket은 public으로 열지 않고 CloudFront Origin Access Control(OAC)을 통해서만 읽히게 구성하는 것을 권장한다.
 
-```txt
-.github/workflows/deploy-backend.yml
-```
-
-실행 전 필요한 EC2 준비:
-
-- Java 17 설치
-- `/opt/subtrack/app.env` 작성
-- `SPRING_PROFILES_ACTIVE=prod` 설정
-- systemd service를 실행할 EC2 사용자 준비
-- `EC2_SERVICE_USER` Repository Variable 설정
-- `EC2_SERVICE_USER`가 `/opt/subtrack` 접근 권한과 `systemctl restart`에 필요한 sudo 권한을 갖는지 확인
-- EC2 security group에서 8080 접근 또는 별도 HTTPS 프록시 구성 확인
-- Repository Variables: `BACKEND_SERVICE_NAME`, `EC2_APP_DIR`, `BACKEND_JAR_NAME`, `EC2_SERVICE_USER`
-- Repository Secrets: `EC2_HOST`, `EC2_USER`, `EC2_SSH_PRIVATE_KEY`
-
-backend workflow는 `backend` 디렉터리에서 `./mvnw clean package`를 실행하고, 생성된 JAR를 `subtrack-backend.jar` 이름으로 정리한 뒤 EC2에 업로드한다. 이후 `deploy/backend/subtrack.service`와 `deploy/backend/deploy-backend.sh` 템플릿을 EC2 `/tmp`에 올리고 systemd 서비스를 재시작한다.
-
-backend workflow는 `deploy/backend/subtrack.service`의 `<ec2-app-user>` placeholder를 EC2에 업로드하기 전에 `EC2_SERVICE_USER` 값으로 치환한다. `EC2_SERVICE_USER`가 비어 있으면 workflow가 실패해야 한다.
-
-backend workflow는 `/opt/subtrack/app.env`를 생성하지 않는다. DB URL, DB password, JWT secret, CORS origin 같은 운영 값은 사용자가 EC2에 직접 만들거나 별도 안전한 방식으로 주입한다. workflow 로그에 `app.env` 내용을 출력하지 않는다.
-
-RDS 초기화는 workflow에서 수행하지 않는다. 신규 RDS는 별도로 `database/00_rds_init_all.sql`을 적용한다.
-
-최초 배포 권장 순서:
+권장 방향:
 
 ```txt
-1. RDS 생성 및 database/00_rds_init_all.sql 적용
-2. EC2 생성 및 /opt/subtrack/app.env 작성
-3. backend workflow 실행
-4. backend /api/health 확인
-5. S3 bucket 및 CloudFront distribution 생성
-6. VITE_BACKSERVER Repository Variable 설정
-7. frontend workflow 실행
-8. 브라우저에서 회원가입, 로그인, 구독 등록 확인
+1. S3 Block Public Access 유지
+2. CloudFront Origin Access Control 생성
+3. CloudFront distribution에 OAC 연결
+4. S3 bucket policy는 해당 CloudFront distribution만 허용
 ```
 
-## 12. RDS 신규 DB 초기화 SQL
+S3 bucket policy에는 실제 AWS ARN을 문서에 기록하지 않고 placeholder만 사용한다.
 
-신규 RDS MySQL은 DB name을 `subtrack`으로 만드는 것을 권장한다.
+## 10. Health Check와 배포 확인
 
-권장 DB 설정:
+backend health check endpoint:
 
 ```txt
-Engine    : MySQL 8.x
-DB name   : subtrack
-Charset   : utf8mb4
-Collation : utf8mb4_unicode_ci
-```
-
-RDS 보안 그룹은 EC2 security group에서만 MySQL 3306 접근을 허용한다.
-
-```txt
-Type  : MySQL/Aurora
-Port  : 3306
-Source: <ec2-security-group-id>
-```
-
-신규 RDS의 빈 `subtrack` DB에는 아래 파일을 사용한다.
-
-```txt
-database/00_rds_init_all.sql
-```
-
-적용 예시:
-
-```bash
-mysql -h <rds-endpoint> -P 3306 -u <rds-app-username> -p subtrack < database/00_rds_init_all.sql
-```
-
-비밀번호는 명령어에 직접 쓰지 말고 `-p` 프롬프트에서 입력한다.
-
-`database/03_add_billing_start_date.sql`부터 `database/06_add_exchange_rate.sql`까지는 기존 로컬 DB를 보정하던 migration이다. 신규 RDS에 `00_rds_init_all.sql`을 적용했다면 `03~06`을 다시 적용하지 않는다.
-
-SQL 적용 후 확인 쿼리:
-
-```sql
-SHOW TABLES;
-SELECT COUNT(*) FROM subscription_category;
-SELECT COUNT(*) FROM exchange_rate;
-SELECT COUNT(*) FROM subscription_status_history;
-```
-
-`subscription_category`는 10건, `exchange_rate`는 SYSTEM fallback seed 4건이면 정상이다. 신규 DB라면 `subscription_status_history`는 0건이어도 정상이다.
-
-프로젝트의 실제 카테고리 테이블명은 `category`가 아니라 `subscription_category`다.
-
-운영 CORS origin은 EC2 환경변수 또는 GitHub Actions 배포 과정에서 아래 값으로 주입한다.
-
-```env
-CORS_ALLOWED_ORIGINS=https://<frontend-domain>
-```
-
-여러 origin이 필요하면 쉼표로 구분한다.
-
-```env
-CORS_ALLOWED_ORIGINS=http://localhost:5173,https://<cloudfront-domain>
-```
-
-`*` origin은 허용하지 않는다. CloudFront 배포 후에는 실제 프론트엔드 origin이 `CORS_ALLOWED_ORIGINS`에 포함되어 있는지 먼저 확인한다.
-
-## 11. EC2 backend JAR + systemd 배포 템플릿
-
-백엔드 운영 프로필 설정은 아래 파일에 둔다.
-
-```txt
-backend/src/main/resources/application-prod.yml
-```
-
-이 파일은 `SPRING_PROFILES_ACTIVE=prod`일 때 사용되며, 로컬 기본 실행용 `application.yml`은 그대로 유지한다. 운영에서 민감하거나 환경마다 달라지는 값은 EC2의 `/opt/subtrack/app.env`로 주입한다.
-
-운영 환경변수 예시는 아래 파일에서 확인한다.
-
-```txt
-deploy/backend/app.env.example
-```
-
-EC2에서는 예시 파일을 참고해 실제 파일을 만든다.
-
-```bash
-sudo mkdir -p /opt/subtrack
-sudo cp deploy/backend/app.env.example /opt/subtrack/app.env
-sudo vi /opt/subtrack/app.env
-sudo chmod 600 /opt/subtrack/app.env
-```
-
-`/opt/subtrack/app.env`에는 실제 운영 값이 들어가므로 Git에 커밋하지 않는다. 실제 RDS endpoint, DB password, JWT secret, CloudFront domain은 문서에 기록하지 않고 EC2 환경 또는 GitHub Secrets에서만 관리한다.
-
-systemd 서비스 템플릿은 아래 파일에 둔다.
-
-```txt
-deploy/backend/subtrack.service
-```
-
-수동 배포를 할 때는 `<ec2-app-user>`를 `EC2_SERVICE_USER`에 해당하는 실제 실행 사용자로 바꾼 뒤 systemd 경로에 복사한다. GitHub Actions backend workflow는 업로드 전에 이 placeholder를 `EC2_SERVICE_USER` 값으로 치환한다.
-
-```bash
-sudo cp deploy/backend/subtrack.service /etc/systemd/system/subtrack-backend.service
-sudo vi /etc/systemd/system/subtrack-backend.service
-sudo systemctl daemon-reload
-```
-
-JAR 배치와 서비스 재시작은 아래 스크립트 템플릿을 사용한다.
-
-```txt
-deploy/backend/deploy-backend.sh
-```
-
-사용 예시:
-
-```bash
-chmod +x deploy/backend/deploy-backend.sh
-./deploy/backend/deploy-backend.sh ./subtrack-backend.jar
-```
-
-스크립트는 `/opt/subtrack` 디렉터리를 만들고, 전달받은 JAR를 `/opt/subtrack/subtrack-backend.jar`로 복사한 뒤 `subtrack-backend` systemd 서비스를 enable/restart한다.
-
-배포 후 서비스 상태와 로그는 아래 명령으로 확인한다.
-
-```bash
-sudo systemctl status subtrack-backend --no-pager
-sudo journalctl -u subtrack-backend -f
-```
-
-애플리케이션 기동 확인은 health check endpoint로 한다.
-
-```bash
-curl http://localhost:8080/api/health
+GET /api/health
 ```
 
 예상 응답:
@@ -534,4 +310,44 @@ curl http://localhost:8080/api/health
     "status": "UP"
   }
 }
+```
+
+backend workflow는 EC2 내부에서 아래 요청으로 기동을 확인한다.
+
+```bash
+curl http://localhost:8080/api/health
+```
+
+실패하면 `systemctl status`와 최근 `journalctl` 일부를 출력한다. 단, `/opt/subtrack/app.env` 내용은 출력하지 않는다.
+
+## 11. 최초 배포 권장 순서
+
+```txt
+1. RDS 생성 및 database/00_rds_init_all.sql 적용
+2. EC2 생성, Java 17 설치, SSH/sudo/보안 그룹 준비
+3. GitHub backend Secrets/Variables 등록
+4. backend workflow 수동 실행 또는 main push 자동 실행
+5. backend /api/health 확인
+6. S3 bucket 및 CloudFront distribution 생성
+7. GitHub frontend Variables/Secrets 등록
+8. frontend workflow 실행
+9. 브라우저에서 회원가입, 로그인, 구독 등록 확인
+```
+
+RDS 초기화는 backend workflow에서 수행하지 않는다. 신규 RDS는 별도로 `database/00_rds_init_all.sql`을 적용한다.
+
+## 12. 배포 후 확인 순서
+
+```txt
+1. RDS가 private 상태인지 확인
+2. RDS 보안 그룹이 EC2 보안 그룹만 3306으로 허용하는지 확인
+3. RDS에 database/00_rds_init_all.sql 적용 여부 확인
+4. EC2 /opt/subtrack/app.env가 workflow로 생성되었는지 확인
+5. EC2 systemd service가 active 상태인지 확인
+6. backend /api/health 응답 확인
+7. frontend build 결과가 S3에 업로드되었는지 확인
+8. CloudFront invalidation 후 frontend 접속 확인
+9. 회원가입, 로그인, 구독 등록, 목록 조회, 대시보드 조회 확인
+10. 브라우저 콘솔에서 CORS 또는 mixed content 오류가 없는지 확인
+11. EC2 로그에서 DB 연결 오류가 없는지 확인
 ```

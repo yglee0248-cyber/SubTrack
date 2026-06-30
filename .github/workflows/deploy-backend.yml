@@ -2,6 +2,13 @@ name: Deploy Backend
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - "deploy/backend/**"
+      - ".github/workflows/deploy-backend.yml"
 
 permissions:
   contents: read
@@ -11,6 +18,10 @@ env:
   EC2_APP_DIR: ${{ vars.EC2_APP_DIR || '/opt/subtrack' }}
   BACKEND_JAR_NAME: ${{ vars.BACKEND_JAR_NAME || 'subtrack-backend.jar' }}
   EC2_SERVICE_USER: ${{ vars.EC2_SERVICE_USER }}
+  CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
+  EXCHANGE_RATE_BASE_URL: ${{ vars.EXCHANGE_RATE_BASE_URL || 'https://api.frankfurter.dev' }}
+  SERVER_PORT: "8080"
+  JWT_ACCESS_TOKEN_EXPIRATION_MS: "3600000"
 
 jobs:
   deploy-backend:
@@ -29,6 +40,10 @@ jobs:
           EC2_HOST_VALUE: ${{ secrets.EC2_HOST }}
           EC2_USER_VALUE: ${{ secrets.EC2_USER }}
           EC2_SSH_PRIVATE_KEY_VALUE: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          DB_URL_VALUE: ${{ secrets.DB_URL }}
+          DB_USERNAME_VALUE: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD_VALUE: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET_VALUE: ${{ secrets.JWT_SECRET }}
         run: |
           missing=0
 
@@ -52,6 +67,11 @@ jobs:
             missing=1
           fi
 
+          if [[ -z "${CORS_ALLOWED_ORIGINS:-}" ]]; then
+            echo "::error title=Missing repository variable::CORS_ALLOWED_ORIGINS is required."
+            missing=1
+          fi
+
           if [[ -z "${EC2_HOST_VALUE:-}" ]]; then
             echo "::error title=Missing repository secret::EC2_HOST is required."
             missing=1
@@ -64,6 +84,26 @@ jobs:
 
           if [[ -z "${EC2_SSH_PRIVATE_KEY_VALUE:-}" ]]; then
             echo "::error title=Missing repository secret::EC2_SSH_PRIVATE_KEY is required."
+            missing=1
+          fi
+
+          if [[ -z "${DB_URL_VALUE:-}" ]]; then
+            echo "::error title=Missing repository secret::DB_URL is required."
+            missing=1
+          fi
+
+          if [[ -z "${DB_USERNAME_VALUE:-}" ]]; then
+            echo "::error title=Missing repository secret::DB_USERNAME is required."
+            missing=1
+          fi
+
+          if [[ -z "${DB_PASSWORD_VALUE:-}" ]]; then
+            echo "::error title=Missing repository secret::DB_PASSWORD is required."
+            missing=1
+          fi
+
+          if [[ -z "${JWT_SECRET_VALUE:-}" ]]; then
+            echo "::error title=Missing repository secret::JWT_SECRET is required."
             missing=1
           fi
 
@@ -108,7 +148,26 @@ jobs:
             exit 1
           fi
 
-          cp deploy/backend/deploy-backend.sh deploy-artifacts/deploy-backend.sh
+      - name: Create production app.env
+        env:
+          DB_URL_VALUE: ${{ secrets.DB_URL }}
+          DB_USERNAME_VALUE: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD_VALUE: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET_VALUE: ${{ secrets.JWT_SECRET }}
+        run: |
+          install -m 600 /dev/null deploy-artifacts/app.env
+          {
+            printf '%s\n' "SPRING_PROFILES_ACTIVE=prod"
+            printf 'SERVER_PORT=%s\n' "${SERVER_PORT}"
+            printf 'DB_URL=%s\n' "${DB_URL_VALUE}"
+            printf 'DB_USERNAME=%s\n' "${DB_USERNAME_VALUE}"
+            printf 'DB_PASSWORD=%s\n' "${DB_PASSWORD_VALUE}"
+            printf 'JWT_SECRET=%s\n' "${JWT_SECRET_VALUE}"
+            printf 'JWT_ACCESS_TOKEN_EXPIRATION_MS=%s\n' "${JWT_ACCESS_TOKEN_EXPIRATION_MS}"
+            printf 'CORS_ALLOWED_ORIGINS=%s\n' "${CORS_ALLOWED_ORIGINS}"
+            printf 'EXCHANGE_RATE_BASE_URL=%s\n' "${EXCHANGE_RATE_BASE_URL}"
+          } > deploy-artifacts/app.env
+          chmod 600 deploy-artifacts/app.env
 
       - name: Configure SSH
         env:
@@ -140,8 +199,8 @@ jobs:
             "${EC2_USER_VALUE}@${EC2_HOST_VALUE}:/tmp/${BACKEND_JAR_NAME}"
           scp -i ~/.ssh/subtrack_ec2_key deploy-artifacts/subtrack-backend.service \
             "${EC2_USER_VALUE}@${EC2_HOST_VALUE}:/tmp/subtrack-backend.service"
-          scp -i ~/.ssh/subtrack_ec2_key deploy-artifacts/deploy-backend.sh \
-            "${EC2_USER_VALUE}@${EC2_HOST_VALUE}:/tmp/deploy-backend.sh"
+          scp -i ~/.ssh/subtrack_ec2_key deploy-artifacts/app.env \
+            "${EC2_USER_VALUE}@${EC2_HOST_VALUE}:/tmp/app.env"
 
       - name: Install systemd service and restart backend
         env:
@@ -150,12 +209,18 @@ jobs:
         run: |
           ssh -i ~/.ssh/subtrack_ec2_key "${EC2_USER_VALUE}@${EC2_HOST_VALUE}" "bash -s" <<EOF
           set -euo pipefail
+          trap 'sudo rm -f /tmp/app.env "/tmp/${BACKEND_JAR_NAME}" /tmp/subtrack-backend.service' EXIT
+          sudo mkdir -p "${EC2_APP_DIR}"
+          sudo cp /tmp/app.env "${EC2_APP_DIR}/app.env"
+          sudo chown "${EC2_SERVICE_USER}" "${EC2_APP_DIR}/app.env"
+          sudo chmod 600 "${EC2_APP_DIR}/app.env"
+          sudo cp "/tmp/${BACKEND_JAR_NAME}" "${EC2_APP_DIR}/${BACKEND_JAR_NAME}"
+          sudo chown "${EC2_SERVICE_USER}" "${EC2_APP_DIR}/${BACKEND_JAR_NAME}"
+          sudo chmod 644 "${EC2_APP_DIR}/${BACKEND_JAR_NAME}"
           sudo cp /tmp/subtrack-backend.service "/etc/systemd/system/${BACKEND_SERVICE_NAME}.service"
-          chmod +x /tmp/deploy-backend.sh
-          sed -i 's|^APP_DIR=.*|APP_DIR="${EC2_APP_DIR}"|' /tmp/deploy-backend.sh
-          sed -i 's|^JAR_NAME=.*|JAR_NAME="${BACKEND_JAR_NAME}"|' /tmp/deploy-backend.sh
-          sed -i 's|^SERVICE_NAME=.*|SERVICE_NAME="${BACKEND_SERVICE_NAME}"|' /tmp/deploy-backend.sh
-          /tmp/deploy-backend.sh "/tmp/${BACKEND_JAR_NAME}"
+          sudo systemctl daemon-reload
+          sudo systemctl enable "${BACKEND_SERVICE_NAME}"
+          sudo systemctl restart "${BACKEND_SERVICE_NAME}"
           EOF
 
       - name: Health check
@@ -177,3 +242,9 @@ jobs:
           sudo journalctl -u "${BACKEND_SERVICE_NAME}" -n 80 --no-pager || true
           exit 1
           EOF
+
+      - name: Cleanup sensitive files
+        if: always()
+        run: |
+          rm -f deploy-artifacts/app.env
+          rm -f ~/.ssh/subtrack_ec2_key
